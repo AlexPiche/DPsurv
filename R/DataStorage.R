@@ -1,0 +1,102 @@
+#'
+#' @export
+setClass("DataStorage", representation(presentation='data.frame', computation='numeric', simulation='numeric', validation='data.frame',
+                                       grid='numeric', mask='numeric', censoring='numeric', episode='matrix', xi='numeric'))
+
+validate <- function(data, status, zeta, theta, phi, weights, ...){
+  probability <- rep(NA, length(data))
+  for(i in 1:length(data)){
+    probability[i] <- evaluate.ICDF(theta[, zeta[i]], phi[, zeta[i]], weights[, zeta[i]], grid=data[i])
+  }
+  toRet <- BrierScore(probability, status)
+  print(toRet)
+  return(toRet)
+}
+
+train_test_split <- function(dataset, fraction, DataStorage){
+  idx <- sample.int(dim(dataset)[1], round(0.1*dim(dataset)[1]))
+  validation <- dataset[sort(idx),]
+  DataStorage@validation <- validation
+  dataset <- dataset[-sort(idx),]
+  DataStorage@presentation <- dataset
+  return(DataStorage)
+}
+
+init.DataStorage.simple <- function(dataset, ...){
+  dataset <- plyr::arrange(dataset, Sample)
+  DataStorage <- new("DataStorage")
+  DataStorage <- train_test_split(dataset, fraction, DataStorage)
+  X <- lapply(unique(dataset$Sample), function(ss) t(matrix(subset(dataset, Sample == ss)$status)))
+  censoring <- do.call(plyr::rbind.fill.matrix, X)
+  DataStorage@censoring <- c(t(censoring))
+  X <- lapply(unique(dataset$Sample), function(ss) t(matrix(subset(dataset, Sample == ss)$data)))
+  computation <- do.call(plyr::rbind.fill.matrix, X)
+  DataStorage@computation <- c(t(computation))
+  DataStorage@simulation <- DataStorage@computation
+  max_grid <- ceiling(round(1.5*exp(max(dataset$data))))
+  DataStorage@grid <- seq(1, max_grid, round(max_grid/500))
+  DataStorage@mask <-rowSums(!is.na(computation))
+  DataStorage@xi <- rep(0, 2)
+  return(DataStorage)
+}
+
+init.DataStorage.recurrent <- function(dataset, ...){
+  #X <- lapply(unique(dataset$Sample), function(ss) t(matrix(subset(dataset, Sample == ss)$real.episode)))
+  #DataStorage@episode <- do.call(plyr::rbind.fill.matrix, X)
+  return(-1)
+}
+simSurvMix <- function(N, prob){
+    toRet <- data.frame(data=rep(NA,N), status=rep(NA,N))
+    for (n in 1:N){
+      i <- runif(1)
+      if(i < prob[1]){
+        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 3.75, beta0.ev = 3.75, dist.ev = "weibull")[,c('stop', 'status')]
+      }else if(i < sum(prob[1:2])){
+        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 3.887, beta0.ev = 3.887, dist.ev = "lnorm", dist.cens = "lnorm")[,c('stop', 'status')]
+      }else if(i < sum(prob[1:3])){
+        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 3, foltime = 10000, anc.cens = 3, beta0.cens = 4.5, beta0.ev = 4.5, dist.ev = "weibull")[,c('stop', 'status')]
+      }else{
+        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 8, beta0.ev = 8, dist.ev = "weibull")[,c('stop', 'status')]
+      }
+    }
+    toRet
+}
+
+simRecSurvMix <- function(){
+#  sim.data <- rec.ev.sim(n=5000, foltime=1825, dist.ev=c('weibull','weibull'),
+#                         anc.ev=c(1, 1),beta0.ev=c(6.678, 4.430),,
+#                       anc.cens=c(1, 1), beta0.cens=c(6.712, 4.399))
+  return(-1)
+}
+
+
+sim.data <- function(n=500, J=20, validation_prop=0.1){
+  N <-  J*n
+  
+  T1 <- simSurvMix(N, c(0.6,0.4,0,0))     
+  T2 <- simSurvMix(N, c(0.25,.75,0,0))       
+  T3 <- simSurvMix(N, c(0.25,0,0.75,0))
+  
+  T1$TrueDistribution <- "T1"
+  T2$TrueDistribution <- "T2"
+  T3$TrueDistribution <- "T3"
+  
+  mixture <- rbind(T1,T2,T3)
+  
+  mixture$TrueDistribution <- as.factor(mixture$TrueDistribution)
+  mixture$xi <- rep(0, 3*N)
+  mixture$zeta <- rep(0, 3*N)
+  mixture$Sample <- paste("S", rep(1:(3*J), each=n),sep='')
+  mixture$Sample <- as.factor(mixture$Sample)
+  mixture$data <- log(mixture$data)
+  
+  #names(mixture)[3] <- "data"
+  data <- init.DataStorage.simple(mixture, validation_prop)
+  data
+}
+
+update_validation_set <- function(DataStorage, ...){
+  mapping <- unique(DataStorage@presentation[, c("xi", "Sample")])
+  DataStorage@validation$xi <- plyr::mapvalues(DataStorage@validation$Sample, mapping$Sample, mapping$xi, warn_missing=F)
+  return(DataStorage)
+}
