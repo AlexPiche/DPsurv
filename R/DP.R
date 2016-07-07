@@ -23,17 +23,22 @@ update.DP <- function(DP, ...){
   return(DP)
 }
 
+selectXi.DP <- function(DP, DataStorage){
+    xx <- DPsurv::eStep(DP@theta, DP@phi, DP@weights, DataStorage)
+    xx <- stabilize(xx)
+    zz <- array(xx, c(DP@L, max(DataStorage@mask), length(DataStorage@mask)))
+    rr <- apply(zz, 3, rowSums, na.rm=T)
+    xi <- apply(rr, 2, sample.int, n=DP@L, size=1, replace=F)
+    return(xi)
+}
+
 MCMC.DP <- function(DP, DataStorage, iter, ...){
   i <- 0
   while(DP@details[['iteration']] < DP@details[['max_iter']] & i < iter){
 
     DP@details[['iteration']] <- DP@details[['iteration']] + 1
     i <- i + 1
-    xx <- DPsurv::eStep(DP@theta, DP@phi, DP@weights, DataStorage)
-    xx <- stabilize(xx)
-    zz <- array(xx, c(DP@L, max(DataStorage@mask), length(DataStorage@mask)))
-    rr <- apply(zz, 3, rowSums, na.rm=T)
-    xi <- apply(rr, 2, sample.int, n=DP@L, size=1, replace=F)
+    xi <- selectXi.DP(DP, DataStorage)
     DataStorage@presentation$xi <- rep(xi, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
     DataStorage <- DPsurv::gibbsStep(DP=DP, DataStorage=DataStorage, 
                                      RealData=DataStorage@presentation$data, xi=rep(xi, each=max(DataStorage@mask)), 
@@ -44,15 +49,17 @@ MCMC.DP <- function(DP, DataStorage, iter, ...){
     DataStorage@computation <- DataStorage@presentation$data
     DP <- update.DP(DP)
     DP@Chains <- list(theta=DP@theta, phi=DP@phi, weights=DP@weights)
-    if(DP@details[["iteration"]]>DP@details[["burnin"]]){
+    if(DP@details[["iteration"]]>DP@details[["burnin"]] & (DP@details[["iteration"]] %% DP@details[["thinning"]])==0){
       DP@ChainStorage <- saveChain.ChainStorage(DP@Chains, (DP@details[["iteration"]]-DP@details[["burnin"]])/DP@details[["thinning"]], DP@ChainStorage)
     }
-    validate.DP(DP, DataStorage)
   }
   return(DP)
 }
 
 validate.DP <- function(DP, DataStorage){
+  DP <- posterior.DP(DP, 0.5)
+  xi <- selectXi.DP(DP, DataStorage)
+  DataStorage@presentation$xi <- rep(xi, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
   DataStorage <- update_validation_set(DataStorage)
   score <- validate(data=DataStorage@validation$data, status=DataStorage@validation$status, zeta=DataStorage@validation$xi,
                     theta=t(DP@theta), phi=t(DP@phi), weights=diag(DP@L))

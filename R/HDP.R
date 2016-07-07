@@ -65,7 +65,7 @@ MCMC.HDP <- function(HDP, DataStorage, iter, ...){
     HDP <- DPsurv::mStep(HDP, DataStorage, xi, rep(1, length(xi))) 
     DataStorage@computation <- DataStorage@presentation$data
     HDP <- update.HDP(HDP)
-    if(HDP@details[["iteration"]]>HDP@details[["burnin"]]){
+    if(HDP@details[["iteration"]]>HDP@details[["burnin"]] & (HDP@details[["iteration"]] %% HDP@details[["thinning"]])==0){
       HDP@ChainStorage <- saveChain.ChainStorage(HDP@Chains, (HDP@details[["iteration"]]-HDP@details[["burnin"]])/HDP@details[["thinning"]], HDP@ChainStorage)
     }
   }
@@ -73,11 +73,7 @@ MCMC.HDP <- function(HDP, DataStorage, iter, ...){
 }
 
 validate.HDP <- function(HDP, DataStorage){
-  csMedian <- getQuantile.ChainStorage(HDP@ChainStorage, 0.5)
-  HDP@theta <- csMedian[["theta"]]
-  HDP@phi <- csMedian[["phi"]]
-  HDP@weights <- csMedian[["weights"]]
-  HDP@pi <- csMedian[["pi"]]
+  HDP <- posterior.DP(HDP, 0.5)
   DataStorage <- update_validation_set(DataStorage)
   score <- validate(data=DataStorage@validation$data, status=DataStorage@validation$status, zeta=DataStorage@validation$xi,
                     theta=matrix(rep(c(HDP@theta), HDP@J), ncol=HDP@J), phi=matrix(rep(c(HDP@phi), HDP@J), ncol=HDP@J), weights=HDP@weights)

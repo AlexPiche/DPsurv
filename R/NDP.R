@@ -62,26 +62,17 @@ MCMC.NDP <- function(NDP, DataStorage, iter, ...){
     NDP <- DPsurv::mStep(NDP, DataStorage, xi=xi, zeta=rep(zeta, each = max(DataStorage@mask)))
     DataStorage@computation <- DataStorage@presentation$data
     NDP <- update.NDP(NDP)
-    validate.NDP(NDP, DataStorage)
     NDP@Chains <- list(theta=NDP@theta, phi=NDP@phi, weights=NDP@weights, pi=NDP@pi)
-    if(NDP@details[["iteration"]]>NDP@details[["burnin"]]){
+    if(NDP@details[["iteration"]]>NDP@details[["burnin"]] & (NDP@details[["iteration"]] %% NDP@details[["thinning"]])==0){
       NDP@ChainStorage <- saveChain.ChainStorage(NDP@Chains, (NDP@details[["iteration"]]-NDP@details[["burnin"]])/NDP@details[["thinning"]], NDP@ChainStorage)
     }
   }
   return(NDP)
 }
 
-posterior.NDP <- function(NDP, quantiles){
-  csMedian <- getQuantile.ChainStorage(NDP@ChainStorage, quantiles)
-  NDP@theta <- csMedian[["theta"]]
-  NDP@phi <- csMedian[["phi"]]
-  NDP@weights <- csMedian[["weights"]]
-  NDP@pi <- csMedian[["pi"]]
-  return(NDP)
-}
 
 validate.NDP <- function(NDP, DataStorage){
-  NDP <- posterior.NDP(NDP, 0.5)
+  NDP <- posterior.DP(NDP, 0.5)
   ZetaXi <- selectZetaXi.NDP(NDP, DataStorage)
   zeta <- ZetaXi[["zeta"]]
   DataStorage@presentation$zeta <- rep(zeta, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))

@@ -21,7 +21,7 @@ saveChain.ChainStorage <- function(Chains, iteration, ChainStorage, ...){
 
 
 getQuantile.ChainStorage <- function(ChainStorage, quantiles, ...){
-  lapply(ChainStorage@chains, apply, c(1,2), quantile, quantiles)
+  lapply(ChainStorage@chains, apply, c(1,2), quantile, quantiles, na.rm=T)
 }
 
 
@@ -35,6 +35,15 @@ getICDF.ChainStorage <- function(DP, max_iter, myGrid){
   toRet <- mapply(evaluate.ICDF, theta_mat, phi_mat, weights_mat, MoreArgs = list(grid=myGrid))
   toRet <- array(toRet, c(dim(toRet)[1], dim(DP@theta)[2], max_iter))
   toRet
+}
+
+posterior.DP <- function(DP, quantiles){
+  csMedian <- getQuantile.ChainStorage(DP@ChainStorage, quantiles)
+  DP@theta <- csMedian[["theta"]]
+  DP@phi <- csMedian[["phi"]]
+  DP@weights <- csMedian[["weights"]]
+  if(length(csMedian[["pi"]]) > 1) DP@pi <- csMedian[["pi"]]
+  return(DP)
 }
 
 getCIICDF.ChainStorage <- function(DP){
