@@ -58,7 +58,8 @@ MCMC.HDP <- function(HDP, DataStorage, iter, ...){
     i <- i + 1
     xi <- computeXi.HDP(HDP, DataStorage)
     DataStorage@presentation$zeta <- rep(1:HDP@J, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
-    Nmat <- matrix(factor(xi,levels = 1:HDP@L), ncol=HDP@J)
+    Nmat <- matrix(factor(xi, levels = 1:HDP@L), ncol=HDP@J)
+    Nmat <- apply(Nmat, 2, as.numeric)
     HDP@Nmat <- apply(Nmat, 2, test, L = HDP@L)
     DataStorage <- DPsurv::gibbsStep(DP=HDP, DataStorage=DataStorage, RealData=DataStorage@presentation$data, xi=xi, 
                                                  zeta=rep(1, length(xi)), censoring=DataStorage@presentation$status) 
