@@ -9,7 +9,6 @@ validate <- function(data, status, zeta, theta, phi, weights, ...){
     probability[i] <- evaluate.ICDF(theta[, zeta[i]], phi[, zeta[i]], weights[, zeta[i]], grid=data[i])
   }
   toRet <- BrierScore(probability, status)
-  print(toRet)
   return(toRet)
 }
 

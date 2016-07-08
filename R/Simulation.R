@@ -1,6 +1,7 @@
 
-init.Simulation <- function(iterations=10, burnin=0, thinning=1, L=55, K=35){
-  scores <- parallel::mclapply(1:25, function(i){
+init.Simulation <- function(replications=2, iterations=10, burnin=0, thinning=1, L=55, K=35){
+  options(gsubfn.engine = "R")
+  scores <- parallel::mclapply(1:replications, function(i){
     set.seed(i)
     data <- sim.data()
     G1 <- new("DP")
@@ -21,7 +22,8 @@ init.Simulation <- function(iterations=10, burnin=0, thinning=1, L=55, K=35){
     toRet <- c(score_DP, score_NDP, score_HDP)
     print(toRet)
     return(toRet)
-  }
+  },
+  mc.cores = 4
   )
-  scores
+  return(scores)
 }
