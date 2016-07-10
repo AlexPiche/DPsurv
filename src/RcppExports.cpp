@@ -61,18 +61,16 @@ BEGIN_RCPP
 END_RCPP
 }
 // gibbsStep
-S4 gibbsStep(S4 DP, S4 DataStorage, NumericVector RealData, IntegerVector xi, IntegerVector zeta, IntegerVector censoring);
-RcppExport SEXP DPsurv_gibbsStep(SEXP DPSEXP, SEXP DataStorageSEXP, SEXP RealDataSEXP, SEXP xiSEXP, SEXP zetaSEXP, SEXP censoringSEXP) {
+S4 gibbsStep(S4 DP, S4 DataStorage, IntegerVector xi, IntegerVector zeta);
+RcppExport SEXP DPsurv_gibbsStep(SEXP DPSEXP, SEXP DataStorageSEXP, SEXP xiSEXP, SEXP zetaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject __result;
     Rcpp::RNGScope __rngScope;
     Rcpp::traits::input_parameter< S4 >::type DP(DPSEXP);
     Rcpp::traits::input_parameter< S4 >::type DataStorage(DataStorageSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type RealData(RealDataSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type xi(xiSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type zeta(zetaSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type censoring(censoringSEXP);
-    __result = Rcpp::wrap(gibbsStep(DP, DataStorage, RealData, xi, zeta, censoring));
+    __result = Rcpp::wrap(gibbsStep(DP, DataStorage, xi, zeta));
     return __result;
 END_RCPP
 }

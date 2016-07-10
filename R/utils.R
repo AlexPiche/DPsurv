@@ -58,3 +58,12 @@ BrierScore <- function(probability, status){
   toRet <- mean((probability-status)^2)
   return(toRet)
 }
+
+mySample <- function(n, size = n, replace = FALSE, prob = NULL){
+  if(!is.na(prob)[1]){
+    prob = prob/sum(prob)
+    sample.int(n, size, replace, prob)
+  }else{
+    return(NA)
+  }
+}

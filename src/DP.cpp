@@ -128,7 +128,7 @@ NumericMatrix eStep(NumericVector theta, NumericVector phi, NumericVector w, S4 
 
 // [[Rcpp::export]]
 S4 mStep(S4 DP, S4 DataStorage, IntegerVector xi, IntegerVector zeta){
-  NumericVector data = DataStorage.slot("computation");
+  NumericVector data = DataStorage.slot("simulation");
   const int N = data.length();
   
   arma::cube prior = DP.slot("prior");
@@ -165,11 +165,8 @@ S4 mStep(S4 DP, S4 DataStorage, IntegerVector xi, IntegerVector zeta){
       Nmat(l,k) = update_n;
       v(l,k) = update_v;
       vs2(l,k) = update_vs2;
-      
-      
     }
   }
-  
   arma::cube posterior = prior;
   posterior.slice(0) = mu;
   posterior.slice(1) = Nmat;
@@ -181,11 +178,13 @@ S4 mStep(S4 DP, S4 DataStorage, IntegerVector xi, IntegerVector zeta){
 }
 
 // [[Rcpp::export]]
-S4 gibbsStep(S4 DP, S4 DataStorage, NumericVector RealData, IntegerVector xi, IntegerVector zeta, IntegerVector censoring){
+S4 gibbsStep(S4 DP, S4 DataStorage, IntegerVector xi, IntegerVector zeta){
+  NumericVector RealData = DataStorage.slot("computation");
+  IntegerVector censoring = DataStorage.slot("censoring");
   const int N = RealData.length();
   NumericMatrix Theta = DP.slot("theta");
   NumericMatrix Phi = DP.slot("phi");
-  NumericVector toRetData(N);
+  NumericVector toRetData(N, NumericVector::get_na());
   int temp;
   
   for(int n=0; n < N; n++){
@@ -200,7 +199,7 @@ S4 gibbsStep(S4 DP, S4 DataStorage, NumericVector RealData, IntegerVector xi, In
         toRetData(n) = censoring(n) ? RealData(n) : rtruncnorm(RealData(n), Theta(l,k), std::sqrt(Phi(l,k)));
     }
   }
-  DataStorage.slot("computation") = toRetData;
+  DataStorage.slot("simulation") = toRetData;
   return DataStorage;
 }
 

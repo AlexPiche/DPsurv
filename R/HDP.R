@@ -29,8 +29,11 @@ update.HDP <- function(HDP, ...){
   kk <- matrix(HDP@Nmat, nrow=1)
   alpha <- 1
   sums <- sapply(1:HDP@L, function(i) {alpha*(1-sum(beta_0[1:i]))})
-  beta_j <- matrix(rbeta(HDP@J*HDP@L, rep(beta_0, HDP@J)+kk, 
-                         zz+rep(sums, HDP@J)), ncol = HDP@J, byrow = F)
+  sums[which(sums < 0)] <- 0
+  
+  beta_j <- rbeta(HDP@J*HDP@L, rep(beta_0, HDP@J)+kk, 
+                  zz+rep(sums, HDP@J))
+  beta_j <- matrix(beta_j, ncol = HDP@J, byrow = F)
   
   HDP@weights <- apply(beta_j, 2, stickBreaking)
   return(HDP)
@@ -61,12 +64,10 @@ MCMC.HDP <- function(HDP, DataStorage, iter, ...){
     Nmat <- matrix(factor(xi, levels = 1:HDP@L), ncol=HDP@J)
     Nmat <- apply(Nmat, 2, as.numeric)
     HDP@Nmat <- apply(Nmat, 2, test, L = HDP@L)
-    DataStorage <- DPsurv::gibbsStep(DP=HDP, DataStorage=DataStorage, RealData=DataStorage@presentation$data, xi=xi, 
-                                                 zeta=rep(1, length(xi)), censoring=DataStorage@presentation$status) 
+    DataStorage <- DPsurv::gibbsStep(DP=HDP, DataStorage=DataStorage, xi=xi, zeta=rep(1, length(xi)))
     HDP <- DPsurv::mStep(HDP, DataStorage, xi, rep(1, length(xi))) 
-    DataStorage@computation <- DataStorage@presentation$data
     HDP <- update.HDP(HDP)
-    if(HDP@details[["iteration"]]>HDP@details[["burnin"]] & (HDP@details[["iteration"]] %% HDP@details[["thinning"]])==0){
+    if(HDP@details[["iteration"]] > HDP@details[["burnin"]] & (HDP@details[["iteration"]] %% HDP@details[["thinning"]])==0){
       HDP@ChainStorage <- saveChain.ChainStorage(HDP@Chains, (HDP@details[["iteration"]]-HDP@details[["burnin"]])/HDP@details[["thinning"]], HDP@ChainStorage)
     }
   }

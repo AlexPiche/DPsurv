@@ -1,29 +1,34 @@
 
-init.Simulation <- function(replications=2, iterations=10, burnin=0, thinning=1, L=55, K=35){
+init.Simulation <- function(filename, replications=35, iterations=55000, burnin=5000, thinning=20, L=35, K=20, n=500, J=20){
   options(gsubfn.engine = "R")
+  write.table(t(c("score_DP", "score_NDP", "score_HDP")), file = paste0(filename, ".csv"), sep = ",", col.names = NA)
   scores <- parallel::mclapply(1:replications, function(i){
-    set.seed(i)
-    data <- sim.data()
-    G1 <- new("DP")
-    G1 <- init.DP(G1, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=L, thinning, burnin, iterations)
-    G1 <- MCMC.DP(G1, data, iterations)
-    score_DP <- validate.DP(G1, data)
+    #set.seed(i)
+    data <- sim.data(n=n, J=J)
+    print(paste("DP", i, sep=" "))
+    G <- new("DP")
+    G <- init.DP(G, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=L, thinning, burnin, iterations, clustering=F)
+    G <- MCMC.DP(G, data, iterations)
+    score_DP <- validate.DP(G, data)
     
-    G2 <- new("NDP")
-    G2 <- init.NDP(G2, prior=list(mu=0, n=0.1, v=3, vs2=1*3), K=K, L=L, thinning, burnin, iterations)
-    G2 <- MCMC.NDP(G2, data, iterations)
-    score_NDP <- validate.NDP(G2, data)
+    print(paste("NDP", i, sep=" "))
+    G <- new("NDP")
+    G <- init.NDP(G, prior=list(mu=0, n=0.1, v=3, vs2=1*3), K=K, L=L, thinning, burnin, iterations)
+    G <- MCMC.NDP(G, data, iterations)
+    score_NDP <- validate.NDP(G, data)
     
-    G3 <- new("HDP")
-    G3 <- init.HDP(G3, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=L, 
+    print(paste("HDP", i, sep=" "))
+    G <- new("HDP")
+    G <- init.HDP(G, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=L, 
                    J=length(levels(data@presentation$Sample)), thinning, burnin, iterations)
-    G3 <- MCMC.HDP(G3, data, iterations)
-    score_HDP <- validate.HDP(G3, data)
+    G <- MCMC.HDP(G, data, iterations)
+    score_HDP <- validate.HDP(G, data)
     toRet <- c(score_DP, score_NDP, score_HDP)
-    print(toRet)
+    write.table(t(toRet), file = paste0(filename, ".csv"), sep = ",", col.names = FALSE, append=TRUE)
     return(toRet)
   },
   mc.cores = 4
   )
+  write.csv(scores, file="results_simulation_DP.csv")
   return(scores)
 }

@@ -25,10 +25,10 @@ init.DataStorage.simple <- function(dataset, ...){
   dataset <- plyr::arrange(dataset, Sample)
   DataStorage <- new("DataStorage")
   DataStorage <- train_test_split(dataset, fraction, DataStorage)
-  X <- lapply(unique(dataset$Sample), function(ss) t(matrix(subset(dataset, Sample == ss)$status)))
+  X <- lapply(unique(DataStorage@presentation$Sample), function(ss) t(matrix(subset(DataStorage@presentation, Sample == ss)$status)))
   censoring <- do.call(plyr::rbind.fill.matrix, X)
   DataStorage@censoring <- c(t(censoring))
-  X <- lapply(unique(dataset$Sample), function(ss) t(matrix(subset(dataset, Sample == ss)$data)))
+  X <- lapply(unique(DataStorage@presentation$Sample), function(ss) t(matrix(subset(DataStorage@presentation, Sample == ss)$data)))
   computation <- do.call(plyr::rbind.fill.matrix, X)
   DataStorage@computation <- c(t(computation))
   DataStorage@simulation <- DataStorage@computation

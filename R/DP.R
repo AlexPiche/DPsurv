@@ -1,10 +1,11 @@
 #'
 #' @export
-setClass("DP", representation(weights = 'matrix', phi = 'matrix', theta = 'matrix', details='list',
+setClass("DP", representation(weights = 'matrix', phi = 'matrix', theta = 'matrix', details='list', clustering = 'logical',
                               prior = 'array', L = 'numeric', Chains='list', ChainStorage='ChainStorage'))
 
-init.DP <- function(DP, prior, L, thinning, burnin, max_iter, ...){
+init.DP <- function(DP, prior, L, thinning, burnin, max_iter, clustering=F, ...){
   DP@L <- L
+  DP@clustering <- clustering
   DP@prior <- array(rep(c(prior$mu, prior$n, prior$v, prior$vs2), each=(L)), c(L,1,4))
   DP <- update.DP(DP)
   DP@Chains <- list(theta=DP@theta, phi=DP@phi, weights=DP@weights)
@@ -27,8 +28,12 @@ selectXi.DP <- function(DP, DataStorage){
     xx <- DPsurv::eStep(DP@theta, DP@phi, DP@weights, DataStorage)
     xx <- stabilize(xx)
     zz <- array(xx, c(DP@L, max(DataStorage@mask), length(DataStorage@mask)))
-    rr <- apply(zz, 3, rowSums, na.rm=T)
-    xi <- apply(rr, 2, sample.int, n=DP@L, size=1, replace=F)
+    rr <- if(DP@clustering) apply(zz, 3, rowSums, na.rm=T) else xx
+    xi <- apply(rr, 2, mySample, n=DP@L, size=1, replace=F)
+    if(length(xi) != length(DataStorage@computation)) {
+      xi <- rep(xi, each=max(DataStorage@mask))
+      xi[is.na(DataStorage@computation)] <- NA
+    }
     return(xi)
 }
 
@@ -39,14 +44,11 @@ MCMC.DP <- function(DP, DataStorage, iter, ...){
     DP@details[['iteration']] <- DP@details[['iteration']] + 1
     i <- i + 1
     xi <- selectXi.DP(DP, DataStorage)
-    DataStorage@presentation$xi <- rep(xi, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
-    DataStorage <- DPsurv::gibbsStep(DP=DP, DataStorage=DataStorage, 
-                                     RealData=DataStorage@presentation$data, xi=rep(xi, each=max(DataStorage@mask)), 
-                                     zeta=rep(1, length(DataStorage@computation)), censoring=DataStorage@presentation$status) 
-    DP <- DPsurv::mStep(DP, DataStorage, xi=rep(xi, each=max(DataStorage@mask)),
+    DataStorage@presentation$xi <- xi[!is.na(xi)] #rep(xi, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
+    DataStorage <- DPsurv::gibbsStep(DP=DP, DataStorage=DataStorage, xi=xi, zeta=rep(1, length(DataStorage@computation))) 
+    DP <- DPsurv::mStep(DP, DataStorage, xi=xi,
                         zeta=rep(1, length(DataStorage@computation)))
     
-    DataStorage@computation <- DataStorage@presentation$data
     DP <- update.DP(DP)
     DP@Chains <- list(theta=DP@theta, phi=DP@phi, weights=DP@weights)
     if(DP@details[["iteration"]]>DP@details[["burnin"]] & (DP@details[["iteration"]] %% DP@details[["thinning"]])==0){
@@ -58,9 +60,15 @@ MCMC.DP <- function(DP, DataStorage, iter, ...){
 
 validate.DP <- function(DP, DataStorage){
   DP <- posterior.DP(DP, 0.5)
-  xi <- selectXi.DP(DP, DataStorage)
-  DataStorage@presentation$xi <- rep(xi, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
-  DataStorage <- update_validation_set(DataStorage)
-  score <- validate(data=DataStorage@validation$data, status=DataStorage@validation$status, zeta=DataStorage@validation$xi,
-                    theta=t(DP@theta), phi=t(DP@phi), weights=diag(DP@L))
+  if(DP@clustering){
+    xi <- selectXi.DP(DP, DataStorage)
+    DataStorage@presentation$xi <- xi[!is.na(xi)] #rep(xi, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
+    DataStorage <- update_validation_set(DataStorage)
+    score <- validate(data=DataStorage@validation$data, status=DataStorage@validation$status, zeta=DataStorage@validation$xi,
+                      theta=t(DP@theta), phi=t(DP@phi), weights=diag(DP@L))
+  }else{
+    score <- validate(data=DataStorage@validation$data, status=DataStorage@validation$status, zeta=rep(1, length(DataStorage@validation$status)),
+                      theta=DP@theta, phi=DP@phi, weights=DP@weights)
+  }
+  return(score)
 }

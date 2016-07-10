@@ -56,11 +56,9 @@ MCMC.NDP <- function(NDP, DataStorage, iter, ...){
     zeta <- ZetaXi[["zeta"]]
     xi <- ZetaXi[["xi"]]
     DataStorage@presentation$zeta <- rep(zeta, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
-    DataStorage <- DPsurv::gibbsStep(DP=NDP, DataStorage=DataStorage, RealData=DataStorage@presentation$data,
-                                     xi=xi, zeta=rep(zeta, each = max(DataStorage@mask)),
-                                     censoring=DataStorage@presentation$status)
+    DataStorage <- DPsurv::gibbsStep(DP=NDP, DataStorage=DataStorage, 
+                                     xi=xi, zeta=rep(zeta, each = max(DataStorage@mask)))
     NDP <- DPsurv::mStep(NDP, DataStorage, xi=xi, zeta=rep(zeta, each = max(DataStorage@mask)))
-    DataStorage@computation <- DataStorage@presentation$data
     NDP <- update.NDP(NDP)
     NDP@Chains <- list(theta=NDP@theta, phi=NDP@phi, weights=NDP@weights, pi=NDP@pi)
     if(NDP@details[["iteration"]]>NDP@details[["burnin"]] & (NDP@details[["iteration"]] %% NDP@details[["thinning"]])==0){
@@ -82,11 +80,3 @@ validate.NDP <- function(NDP, DataStorage){
   return(score)
 }
 
-mySample <- function(n, size = n, replace = FALSE, prob = NULL){
-  if(!is.na(prob)[1]){
-    prob = prob/sum(prob)
-    sample.int(n, size, replace, prob)
-  }else{
-    return(NA)
-  }
-}

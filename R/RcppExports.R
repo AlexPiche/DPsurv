@@ -17,7 +17,7 @@ mStep <- function(DP, DataStorage, xi, zeta) {
     .Call('DPsurv_mStep', PACKAGE = 'DPsurv', DP, DataStorage, xi, zeta)
 }
 
-gibbsStep <- function(DP, DataStorage, RealData, xi, zeta, censoring) {
-    .Call('DPsurv_gibbsStep', PACKAGE = 'DPsurv', DP, DataStorage, RealData, xi, zeta, censoring)
+gibbsStep <- function(DP, DataStorage, xi, zeta) {
+    .Call('DPsurv_gibbsStep', PACKAGE = 'DPsurv', DP, DataStorage, xi, zeta)
 }
 
