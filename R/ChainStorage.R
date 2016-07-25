@@ -12,6 +12,8 @@ init.ChainStorage <- function(Chains, iterations, thinning, ...){
   return(ChainStorage)
 }
 
+#'
+#' @export
 saveChain.ChainStorage <- function(Chains, iteration, ChainStorage, ...){
   for(chain in names(Chains)){
     ChainStorage@chains[[chain]][,,iteration] <- Chains[[chain]]
@@ -20,11 +22,15 @@ saveChain.ChainStorage <- function(Chains, iteration, ChainStorage, ...){
 }
 
 
+#'
+#' @export
 getQuantile.ChainStorage <- function(ChainStorage, quantiles, ...){
   lapply(ChainStorage@chains, apply, c(1,2), quantile, quantiles, na.rm=T)
 }
 
 
+#'
+#' @export
 getICDF.ChainStorage <- function(DP, max_iter, myGrid){
   theta_mat <- matrix(DP@ChainStorage@chains[["theta"]][,,1:max_iter], nrow=DP@L)
   theta_mat <- split(theta_mat, col(theta_mat))
@@ -37,6 +43,8 @@ getICDF.ChainStorage <- function(DP, max_iter, myGrid){
   toRet
 }
 
+#'
+#' @export
 posterior.DP <- function(DP, quantiles){
   csMedian <- getQuantile.ChainStorage(DP@ChainStorage, quantiles)
   DP@theta <- csMedian[["theta"]]
@@ -46,6 +54,8 @@ posterior.DP <- function(DP, quantiles){
   return(DP)
 }
 
+#'
+#' @export
 getCIICDF.ChainStorage <- function(DP){
   return(-1)
 }

@@ -3,17 +3,12 @@
 setClass("DataStorage", representation(presentation='data.frame', computation='numeric', simulation='numeric', validation='data.frame',
                                        grid='numeric', mask='numeric', censoring='numeric', episode='matrix', xi='numeric'))
 
-validate <- function(data, status, zeta, theta, phi, weights, ...){
-  probability <- rep(NA, length(data))
-  for(i in 1:length(data)){
-    probability[i] <- evaluate.ICDF(theta[, zeta[i]], phi[, zeta[i]], weights[, zeta[i]], grid=data[i])
-  }
-  toRet <- BrierScore(probability, status)
-  return(toRet)
-}
 
-train_test_split <- function(dataset, fraction, DataStorage){
-  idx <- sample.int(dim(dataset)[1], round(0.1*dim(dataset)[1]))
+
+#'
+#' @export
+train_test_split <- function(dataset, fraction=0.1, DataStorage){
+  idx <- sample.int(dim(dataset)[1], round(fraction*dim(dataset)[1]))
   validation <- dataset[sort(idx),]
   DataStorage@validation <- validation
   dataset <- dataset[-sort(idx),]
@@ -21,10 +16,12 @@ train_test_split <- function(dataset, fraction, DataStorage){
   return(DataStorage)
 }
 
-init.DataStorage.simple <- function(dataset, ...){
+#'
+#' @export
+init.DataStorage.simple <- function(dataset, fraction_test, ...){
   dataset <- plyr::arrange(dataset, Sample)
   DataStorage <- new("DataStorage")
-  DataStorage <- train_test_split(dataset, fraction, DataStorage)
+  DataStorage <- train_test_split(dataset, fraction_test, DataStorage)
   X <- lapply(unique(DataStorage@presentation$Sample), function(ss) t(matrix(subset(DataStorage@presentation, Sample == ss)$status)))
   censoring <- do.call(plyr::rbind.fill.matrix, X)
   DataStorage@censoring <- c(t(censoring))
@@ -44,6 +41,9 @@ init.DataStorage.recurrent <- function(dataset, ...){
   #DataStorage@episode <- do.call(plyr::rbind.fill.matrix, X)
   return(-1)
 }
+
+#'
+#' @export
 simSurvMix <- function(N, prob){
     toRet <- data.frame(data=rep(NA,N), status=rep(NA,N))
     for (n in 1:N){
@@ -61,6 +61,8 @@ simSurvMix <- function(N, prob){
     toRet
 }
 
+#'
+#' @export
 simRecSurvMix <- function(){
 #  sim.data <- rec.ev.sim(n=5000, foltime=1825, dist.ev=c('weibull','weibull'),
 #                         anc.ev=c(1, 1),beta0.ev=c(6.678, 4.430),,
@@ -69,12 +71,14 @@ simRecSurvMix <- function(){
 }
 
 
-sim.data <- function(n=500, J=20, validation_prop=0.1){
+#'
+#' @export
+sim.data <- function(weights, n=500, J=20, validation_prop=0.1){
   N <-  J*n
   
-  T1 <- simSurvMix(N, c(0.6,0.4,0,0))     
-  T2 <- simSurvMix(N, c(0.25,.75,0,0))       
-  T3 <- simSurvMix(N, c(0.25,0,0.75,0))
+  T1 <- simSurvMix(N, c(weights)[1:3])#c(0.6,0.4,0,0))     
+  T2 <- simSurvMix(N, c(weights)[4:6])#c(0.25,.75,0,0))       
+  T3 <- simSurvMix(N, c(weights)[7:9])#c(0.25,0,0.75,0))
   
   T1$TrueDistribution <- "T1"
   T2$TrueDistribution <- "T2"
@@ -94,6 +98,8 @@ sim.data <- function(n=500, J=20, validation_prop=0.1){
   data
 }
 
+#'
+#' @export
 update_validation_set <- function(DataStorage, ...){
   mapping <- unique(DataStorage@presentation[, c("xi", "Sample")])
   DataStorage@validation$xi <- plyr::mapvalues(DataStorage@validation$Sample, mapping$Sample, mapping$xi, warn_missing=F)

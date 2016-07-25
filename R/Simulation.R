@@ -1,13 +1,30 @@
 
-init.Simulation <- function(filename, replications=35, iterations=55000, burnin=5000, thinning=20, L=35, K=20, n=500, J=20){
+#' Illustration of crayon colors
+#'
+#' Creates a plot of the crayon colors in \code{\link{brocolors}}
+#'
+#' @param seed
+#' 
+#' @return None
+#'
+#' @examples
+#' Simulation(seed=1)
+#'
+#' @export
+Simulation <- function(seed,replications=35,iterations=55000,burnin=5000,thinning=20,L=35,K=20,
+                       n=100,J=10, weights=matrix(c(0.6,0.4,0, 0.25,.75,0, 0.25,0,0.75), ncol=3)){
   options(gsubfn.engine = "R")
-  write.table(t(c("score_DP", "score_NDP", "score_HDP")), file = paste0(filename, ".csv"), sep = ",", col.names = NA)
+  data <- sim.data(n=n, J=J, weights=weights)
+  filename = paste0("results","n", n, "J", J, "seed", seed, ".csv")
+  write.table(t(c("score_DP", "score_NDP", "score_HDP")), file = filename, sep = ",", col.names = NA)
+  set.seed(seed)
+  browser()
   scores <- parallel::mclapply(1:replications, function(i){
     #set.seed(i)
-    data <- sim.data(n=n, J=J)
+    data <- sim.data(n=n, J=J, weights=weights)
     print(paste("DP", i, sep=" "))
     G <- new("DP")
-    G <- init.DP(G, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=L, thinning, burnin, iterations, clustering=F)
+    G <- init.DP(G, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=L, thinning, burnin, iterations, clustering=T)
     G <- MCMC.DP(G, data, iterations)
     score_DP <- validate.DP(G, data)
     
@@ -24,11 +41,9 @@ init.Simulation <- function(filename, replications=35, iterations=55000, burnin=
     G <- MCMC.HDP(G, data, iterations)
     score_HDP <- validate.HDP(G, data)
     toRet <- c(score_DP, score_NDP, score_HDP)
-    write.table(t(toRet), file = paste0(filename, ".csv"), sep = ",", col.names = FALSE, append=TRUE)
+    write.table(t(toRet), file = filename, sep = ",", col.names = FALSE, append=TRUE)
     return(toRet)
   },
   mc.cores = 4
   )
-  write.csv(scores, file="results_simulation_DP.csv")
-  return(scores)
 }

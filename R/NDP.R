@@ -3,6 +3,8 @@
 setClass("NDP", representation(DPs = 'list', K = 'numeric', phi = 'matrix', theta='matrix', weights='matrix', details='list',
                               prior = 'array', L = 'numeric', pi='matrix', Chains='list', ChainStorage='ChainStorage'))
 
+#'
+#' @export
 init.NDP <- function(NDP, prior, K, L, thinning, burnin, max_iter, ...){
   NDP@K <- K
   NDP@L <- L
@@ -14,6 +16,8 @@ init.NDP <- function(NDP, prior, K, L, thinning, burnin, max_iter, ...){
   return(NDP)
 }
 
+#'
+#' @export
 update.NDP <- function(NDP, ...){
   atoms <- rNIG(NDP@L*NDP@K, c(NDP@prior[,,1]), c(NDP@prior[,,2]), c(NDP@prior[,,3]), c(NDP@prior[,,4]))
   NDP@theta <- matrix(atoms[,1], nrow=NDP@L)
@@ -29,7 +33,9 @@ update.NDP <- function(NDP, ...){
   return(NDP)
 }
 
-selectZetaXi.NDP <- function(NDP, DataStorage, ...){
+#'
+#' @export
+selectZetaXi.NDP <- function(NDP, DataStorage, max_lik=F, ...){
     zz <- DPsurv::eStep(theta=c(NDP@theta), phi=c(NDP@phi), w=c(NDP@weights), DataStorage=DataStorage)
     mega_cube <- array(zz, c(NDP@L, NDP@K, max(DataStorage@mask)*length(DataStorage@mask)))
     mega_cube <- aperm(mega_cube, c(1,3,2))
@@ -38,14 +44,17 @@ selectZetaXi.NDP <- function(NDP, DataStorage, ...){
     for(i in 1:dim(zz)[1]){
       zz[i,] <- exp(log(zz[i,]) + log(NDP@pi))
     }
-    zeta <- apply(zz, 1, sample.int, n=NDP@K, size=1, replace=F)
+    zeta <- apply(zz, 1, DP_sample, n=NDP@K, size=1, replace=F, max_lik=max_lik)
+    #zeta <- apply(zz, 1, sample.int, n=NDP@K, size=1, replace=F)
     kk <- sapply(1:length(zeta), function(i) return(jj[,, i, zeta[i]]))
     ii <- matrix(kk, nrow=NDP@L)
     ii <- stabilize(ii)
-    xi <- apply(ii, 2, mySample, n=NDP@L, size=1, replace=F)
+    xi <- apply(ii, 2, DP_sample, n=NDP@L, size=1, replace=F, max_lik=max_lik)
     return(list(zeta=zeta, xi=xi))
 }
 
+#'
+#' @export
 MCMC.NDP <- function(NDP, DataStorage, iter, ...){
   j <- 0
   while(NDP@details[['iteration']] < NDP@details[['max_iter']] & j < iter){
@@ -69,11 +78,13 @@ MCMC.NDP <- function(NDP, DataStorage, iter, ...){
 }
 
 
+#'
+#' @export
 validate.NDP <- function(NDP, DataStorage){
   NDP <- posterior.DP(NDP, 0.5)
-  ZetaXi <- selectZetaXi.NDP(NDP, DataStorage)
+  ZetaXi <- selectZetaXi.NDP(NDP, DataStorage, max_lik = T)
   zeta <- ZetaXi[["zeta"]]
-  DataStorage@presentation$zeta <- rep(zeta, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
+  DataStorage@presentation$xi <- rep(zeta, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
   DataStorage <- update_validation_set(DataStorage)
   score <- validate(data=DataStorage@validation$data, status=DataStorage@validation$status, zeta=DataStorage@validation$xi,
                     theta=NDP@theta, phi=NDP@phi, weights=NDP@weights)

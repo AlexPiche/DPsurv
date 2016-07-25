@@ -1,7 +1,8 @@
+#'
+#' @export
 plot.PDF <- function(theta, phi, weights, L, grid, emp_data, xlim, ...){
   #emp_data <- ifelse(rep(survival, length(emp_data)), exp(emp_data), emp_data)
   
-  browser()
   #grid <- seq(2, xlim, 1)
   
   myPDF <- evaluate.PDF(theta, phi, weights, L, grid)
@@ -16,6 +17,8 @@ plot.PDF <- function(theta, phi, weights, L, grid, emp_data, xlim, ...){
   return(p) 
 }
 
+#'
+#' @export
 plot.ICDF <- function(theta, phi, weights, L, grid, xlim, distribution, ...){
   
   temp <- distribution[,c("status", "data", "Sample")]
@@ -36,7 +39,7 @@ plot.ICDF <- function(theta, phi, weights, L, grid, xlim, distribution, ...){
   #  toPlot <- reshape2::melt(apply(theObject@MCMC_ICDF[,DPnb,1:weight], 1, quantile, c(0.025,0.5,0.975), na.rm=T))
   #  toPlot$Var2 <- rep(theObject@grid,each=3)
   #}else{
-  toPlot <- evaluate.ICDF(theta, phi, weights, L, grid, emp_data, xlim)
+  toPlot <- evaluate.ICDF(theta, phi, weights, grid)
   toPlot <- data.frame(toPlot, grid)
   names(toPlot) <- c("value", "Var2")
   toPlot$Var1 <- "Estimation"
