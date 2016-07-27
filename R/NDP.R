@@ -1,3 +1,17 @@
+#'Nested Dirichlet Process
+#'NDP applied to censored data
+#'@examples
+#'\dontrun{
+#'weights <- matrix(c(0,1,0,0,1,0,0,1,0), ncol=3)
+#'data <- sim.data(weights)
+#'G2 <- new("NDP")
+#'G2 <- init.NDP(G2, prior=list(mu=0, n=0.1, v=3, vs2=1*3),K=5, L=35, thinning=2,
+#'               burnin = 0, max_iter = 5000 )
+#'G2 <- MCMC.NDP(G2, data, 500)
+#plot.ICDF(G2@theta[,which.max(G2@pi)], G2@phi[,which.max(G2@pi)], G2@weights[,which.max(G2@pi)],
+#          G2@L, grid=0:500, distribution=data@presentation, xlim=500)
+#'validate.NDP(G2, data)
+#'}
 #'
 #' @export
 setClass("NDP", representation(DPs = 'list', K = 'numeric', phi = 'matrix', theta='matrix', weights='matrix', details='list',

@@ -49,13 +49,13 @@ simSurvMix <- function(N, prob){
     for (n in 1:N){
       i <- runif(1)
       if(i < prob[1]){
-        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 3.75, beta0.ev = 3.75, dist.ev = "weibull")[,c('stop', 'status')]
+        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 1.5*3.75, beta0.ev = 3.75, dist.ev = "weibull")[,c('stop', 'status')]
       }else if(i < sum(prob[1:2])){
-        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 3.887, beta0.ev = 3.887, dist.ev = "lnorm", dist.cens = "lnorm")[,c('stop', 'status')]
+        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 1.5*3.887, beta0.ev = 3.887, dist.ev = "lnorm", dist.cens = "lnorm")[,c('stop', 'status')]
       }else if(i < sum(prob[1:3])){
-        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 3, foltime = 10000, anc.cens = 3, beta0.cens = 4.5, beta0.ev = 4.5, dist.ev = "weibull")[,c('stop', 'status')]
+        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 3, foltime = 10000, anc.cens = 3, beta0.cens = 1.5*4.5, beta0.ev = 4.5, dist.ev = "weibull")[,c('stop', 'status')]
       }else{
-        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 8, beta0.ev = 8, dist.ev = "weibull")[,c('stop', 'status')]
+        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 1.5*8, beta0.ev = 8, dist.ev = "weibull")[,c('stop', 'status')]
       }
     }
     toRet

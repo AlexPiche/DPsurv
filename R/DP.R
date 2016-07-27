@@ -1,5 +1,17 @@
+#'Dirichlet Process
+#'DP applied to censored data
+#'@examples
+#'\dontrun{
+#'weights <- matrix(c(0,1,0,0,1,0,0,1,0), ncol=3)
+#'data <- sim.data(weights)
+#'  G1 <- init.DP(G1, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=35, thinning=2,
+#'  burnin = 0, max_iter = 5000, clustering = T )
+#'  G1 <- MCMC.DP(G1, data, 500)
+#plot.ICDF(G1@theta, G1@phi, G1@weights, G1@L, grid=0:500,
+#          distribution=data@presentation, xlim=500)
+#'validate.DP(G1, data)
+#'}
 #'
-#' @useDynLib DPsurv
 #' @export
 setClass("DP", representation(weights = 'matrix', phi = 'matrix', theta = 'matrix', details='list', clustering = 'logical',
                               prior = 'array', L = 'numeric', Chains='list', ChainStorage='ChainStorage'))

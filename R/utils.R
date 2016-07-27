@@ -1,3 +1,6 @@
+#'
+#' @useDynLib DPsurv
+
 # utils functions call by the other files
 
 #'
@@ -70,10 +73,10 @@ BrierScore <- function(probability, status){
   return(toRet)
 }
 
-MedianLogScore <- function(probability, status){
+MeanLogScore <- function(probability, status){
   #toRet <- status * log(probability) + (1-status) * log(1-probability)
   toRet <- ifelse((1-status),log(1-probability),log(probability))
-  return(median(toRet))
+  return(mean(toRet))
 }
 
 #'
@@ -92,10 +95,10 @@ DP_sample <- function(n, size = n, replace = FALSE, prob = NULL, max_lik = F){
 validate <- function(data, status, zeta, theta, phi, weights, ...){
   probability <- rep(NA, length(data))
   for(i in 1:length(data)){
-    probability[i] <- evaluate.ICDF(theta[, zeta[i]], phi[, zeta[i]], weights[, zeta[i]],
+    probability[i] <- 1-evaluate.ICDF(theta[, zeta[i]], phi[, zeta[i]], weights[, zeta[i]],
                                     grid=exp(data[i]))
   }
-  toRet <- BrierScore(probability, status)
-  #toRet <- MedianLogScore(probability, status)
+  toRet <- c(BrierScore(probability, status), MeanLogScore(probability, status))
   return(toRet)
 }
+
