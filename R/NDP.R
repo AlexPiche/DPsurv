@@ -99,7 +99,7 @@ validate.NDP <- function(NDP, DataStorage){
   ZetaXi <- selectZetaXi.NDP(NDP, DataStorage, max_lik = T)
   zeta <- ZetaXi[["zeta"]]
   DataStorage@presentation$zeta <- rep(zeta, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
-  DataStorage@validation$zeta <- as.numeric(as.character(plyr::mapvalues(DataStorage@validation$Sample, DataStorage@presentation$Sample, DataStorage@presentation$zeta)))
+  DataStorage@validation$zeta <- as.numeric(as.character(plyr::mapvalues(DataStorage@validation$Sample, DataStorage@presentation$Sample, DataStorage@presentation$zeta,  warn_missing=F)))
   score <- validate(data=DataStorage@validation$data, status=DataStorage@validation$status, zeta=DataStorage@validation$zeta,
                     theta=NDP@theta, phi=NDP@phi, weights=NDP@weights)
   return(score)
