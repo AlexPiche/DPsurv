@@ -95,8 +95,8 @@ DP_sample <- function(n, size = n, replace = FALSE, prob = NULL, max_lik = F){
 validate <- function(data, status, zeta, theta, phi, weights, ...){
   probability <- rep(NA, length(data))
   for(i in 1:length(data)){
-    probability[i] <- 1-evaluate.ICDF(theta[, zeta[i]], phi[, zeta[i]], weights[, zeta[i]],
-                                    grid=exp(data[i]))
+    probability[i] <- 1-evaluate.ICDF(theta=theta[, zeta[i]], phi=phi[, zeta[i]], weights=weights[, zeta[i]],
+                                    grid=data[i])
   }
   toRet <- c(BrierScore(probability, status), MeanLogScore(probability, status))
   return(toRet)

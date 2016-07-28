@@ -25,7 +25,7 @@ plot.ICDF <- function(theta, phi, weights, L, grid, xlim, distribution, ...){
   
   if(dim(temp[temp$status==1,])[1] > 1){
     #browser()
-    s <- with(temp, survival::Surv(exp(data), status))
+    s <- with(temp, survival::Surv(data, status))
     LN1 <- survival::survfit(s ~ 1, data=temp)
     xx <- summary(LN1)
     KM <- data.frame(Var1="KM", Var2=xx$time, value=xx$surv)

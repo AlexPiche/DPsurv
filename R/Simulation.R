@@ -14,15 +14,13 @@ Simulation <- function(seed,replications=35,iterations=55000,burnin=5000,thinnin
                        n=100,J=10, case=1){
   options(gsubfn.engine = "R")
   weights <- switch(case,
-                    0=matrix(c(0,1,0,0,1,0,0,1,0), ncol=3),
-                    1=matrix(c(0.6,0.4,0, 0.25,.75,0, 0.25,0,0.75), ncol=3))
+                    "0"=matrix(c(0,1,0,0,1,0,0,1,0), ncol=3),
+                    "1"=matrix(c(0.6,0.4,0, 0.25,.75,0, 0.25,0,0.75), ncol=3))
   data <- sim.data(n=n, J=J, weights=weights)
-  filename = paste0("results","n", n, "J", J, "seed", seed, ".csv")
-  write.table(t(c("score_DP", "score_NDP", "score_HDP")), file = filename, sep = ",", col.names = NA)
+  filename = paste0("results","n", n, "J", J, "case", case, "seed", seed, ".csv")
+  write.table(t(c("Brier_DP", "Log_DP", "Brier_NDP", "Log_NDP", "Brier_HDP", "Log_HDP")), file = filename, sep = ",", col.names = F, row.names = F)
   set.seed(seed)
-  browser()
   scores <- parallel::mclapply(1:replications, function(i){
-    #set.seed(i)
     data <- sim.data(n=n, J=J, weights=weights)
     print(paste("DP", i, sep=" "))
     G <- new("DP")
@@ -43,7 +41,7 @@ Simulation <- function(seed,replications=35,iterations=55000,burnin=5000,thinnin
     G <- MCMC.HDP(G, data, iterations)
     score_HDP <- validate.HDP(G, data)
     toRet <- c(score_DP, score_NDP, score_HDP)
-    write.table(t(toRet), file = filename, sep = ",", col.names = FALSE, append=TRUE)
+    write.table(t(toRet), file = filename, sep = ",", col.names = F, row.names=F, append=TRUE)
     return(toRet)
   },
   mc.cores = 4

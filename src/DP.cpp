@@ -249,28 +249,30 @@ if(F){
   data <- sim.data(weights)
   G1 <- new("DP")
   G1 <- init.DP(G1, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=35, thinning=2,
-                burnin = 0, max_iter = 5000, clustering = T )
-  G1 <- MCMC.DP(G1, data, 500)
-  validate.DP(G1, data)
+                burnin = 500, max_iter = 5000, clustering = T )
+  G1 <- MCMC.DP(G1, data, 1000)
+  g1 <- validate.DP(G1, data)
   #plot.ICDF(G1@theta, G1@phi, G1@weights, G1@L, grid=0:500,
   #          distribution=data@presentation, xlim=500)
   
   G2 <- new("NDP")
   G2 <- init.NDP(G2, prior=list(mu=0, n=0.1, v=3, vs2=1*3),K=5, L=35, thinning=2,
-                 burnin = 0, max_iter = 5000 )
-  G2 <- MCMC.NDP(G2, data, 500)
-  validate.NDP(G2, data)
+                 burnin = 500, max_iter = 5000 )
+  G2 <- MCMC.NDP(G2, data, 1000)
+  g2<-validate.NDP(G2, data)
   #plot.ICDF(G2@theta[,which.max(G2@pi)], G2@phi[,which.max(G2@pi)], G2@weights[,which.max(G2@pi)],
   #          G2@L, grid=0:500, distribution=data@presentation, xlim=500)
   
   G3 <- new("HDP")
   G3 <- init.HDP(G3, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=15, 
                  J=length(unique(data@presentation$Sample)), thinning=2,
-                 burnin = 0, max_iter = 5000)
-  G3 <- MCMC.HDP(G3, data, 5000)
-  validate.HDP(G3, data)
-  #plot.ICDF(G3@theta, G3@phi, G3@weights[,1], G3@L, grid=0:500,
-  #          distribution=data@presentation, xlim=500)
+                 burnin = 500, max_iter = 5000)
+  G3 <- MCMC.HDP(G3, data, 1000)
+  g3<-validate.HDP(G3, data)
+  zz<-cbind(g1,g2,g3)
+  G3 <- posterior.DP(G3, 0.5)
+  plot.ICDF(G3@theta, G3@phi, G3@weights[,1], G3@L, grid=0:500,
+            distribution=data@presentation, xlim=500)
   set.seed(123)
   data <- sim.data()
   

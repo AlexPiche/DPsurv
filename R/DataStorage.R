@@ -27,9 +27,10 @@ init.DataStorage.simple <- function(dataset, fraction_test, ...){
   DataStorage@censoring <- c(t(censoring))
   X <- lapply(unique(DataStorage@presentation$Sample), function(ss) t(matrix(subset(DataStorage@presentation, Sample == ss)$data)))
   computation <- do.call(plyr::rbind.fill.matrix, X)
-  DataStorage@computation <- c(t(computation))
+  # log the data for computation purposes
+  DataStorage@computation <- log(c(t(computation)))
   DataStorage@simulation <- DataStorage@computation
-  max_grid <- ceiling(round(1.5*exp(max(dataset$data))))
+  max_grid <- ceiling(round(1.5*max(dataset$data)))
   DataStorage@grid <- seq(1, max_grid, round(max_grid/500))
   DataStorage@mask <-rowSums(!is.na(computation))
   DataStorage@xi <- rep(0, 2)
@@ -91,7 +92,7 @@ sim.data <- function(weights, n=500, J=20, validation_prop=0.1){
   mixture$zeta <- rep(0, 3*N)
   mixture$Sample <- paste("S", rep(1:(3*J), each=n),sep='')
   mixture$Sample <- as.factor(mixture$Sample)
-  mixture$data <- log(mixture$data)
+  mixture$data <- mixture$data
   
   #names(mixture)[3] <- "data"
   data <- init.DataStorage.simple(mixture, validation_prop)

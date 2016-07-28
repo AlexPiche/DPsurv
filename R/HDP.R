@@ -90,6 +90,7 @@ MCMC.HDP <- function(HDP, DataStorage, iter, ...){
     DataStorage <- DPsurv::gibbsStep(DP=HDP, DataStorage=DataStorage, xi=xi, zeta=rep(1, length(xi)))
     HDP <- DPsurv::mStep(HDP, DataStorage, xi, rep(1, length(xi))) 
     HDP <- update.HDP(HDP)
+    HDP@Chains <- list(theta=HDP@theta, phi=HDP@phi, weights=HDP@weights)
     if(HDP@details[["iteration"]] > HDP@details[["burnin"]] & (HDP@details[["iteration"]] %% HDP@details[["thinning"]])==0){
       HDP@ChainStorage <- saveChain.ChainStorage(HDP@Chains, (HDP@details[["iteration"]]-HDP@details[["burnin"]])/HDP@details[["thinning"]], HDP@ChainStorage)
     }
