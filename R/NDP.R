@@ -14,7 +14,7 @@
 #'}
 #'
 #' @export
-setClass("NDP", representation(DPs = 'list', K = 'numeric', phi = 'matrix', theta='matrix', weights='matrix', details='list',
+setClass("NDP", representation(DPs = 'list', K = 'numeric', phi = 'matrix', theta='matrix', weights='matrix', details='list', conc_param = 'numeric',
                               prior = 'array', L = 'numeric', pi='matrix', Chains='list', ChainStorage='ChainStorage'))
 
 #'
@@ -23,6 +23,7 @@ init.NDP <- function(NDP, prior, K, L, thinning, burnin, max_iter, ...){
   NDP@K <- K
   NDP@L <- L
   NDP@prior <- array(rep(c(prior$mu, prior$n, prior$v, prior$vs2), each=(K*L)), c(L,K,4))
+  NDP@conc_param <- c(1,1)#rgamma(2,1,1)
   NDP <- update.NDP(NDP)
   NDP@Chains <- list(theta=NDP@theta, phi=NDP@phi, weights=NDP@weights, pi=NDP@pi)
   NDP@details <- list(iteration=0, thinning=thinning, burnin=burnin, max_iter=max_iter)
@@ -33,16 +34,22 @@ init.NDP <- function(NDP, prior, K, L, thinning, burnin, max_iter, ...){
 #'
 #' @export
 update.NDP <- function(NDP, ...){
+  print(NDP@conc_param)
   atoms <- rNIG(NDP@L*NDP@K, c(NDP@prior[,,1]), c(NDP@prior[,,2]), c(NDP@prior[,,3]), c(NDP@prior[,,4]))
   NDP@theta <- matrix(atoms[,1], nrow=NDP@L)
   NDP@phi <- matrix(atoms[,2], nrow=NDP@L)
   sums <- apply(round(NDP@prior[,,2]), 2, mySums)
-  beta_0 <- matrix(rbeta(NDP@L*NDP@K, shape1 = 1 + c(round(NDP@prior[,,2])), shape2 = 1 + c(sums)),
+  u_k <- matrix(rbeta(NDP@L*NDP@K, shape1 = 1 + c(round(NDP@prior[,,2])), shape2 = NDP@conc_param[1] + c(sums)),
                    nrow=NDP@L)
-  NDP@weights <- apply(beta_0, 2, stickBreaking)
+  NDP@weights <- apply(u_k, 2, stickBreaking)
   sums <- mySums(colSums(round(NDP@prior[,,2])))
-  beta_0 <- rbeta(sums, 1 + colSums(round(NDP@prior[,,2])), 1 + sums)
-  NDP@pi <- matrix(stickBreaking(beta_0), nrow=1)
+  v_lk <- rbeta(sums, 1 + colSums(round(NDP@prior[,,2])), NDP@conc_param[2] + sums)
+  NDP@pi <- matrix(stickBreaking(v_lk), nrow=1)
+  
+  #a_conc <- 1
+  #b_conc <- 1
+  #NDP@conc_param[1] <- rgamma(1, a_conc + NDP@K - 1, b_conc - sum(log(1-u_k[1:NDP@K-1])))
+  #NDP@conc_param[2] <- rgamma(1, a_conc + NDP@K*(NDP@L-1) - 1, b_conc - sum(log(1-v_lk[-seq(NDP@L, NDP@K*NDP@L, NDP@L)])))
   
   return(NDP)
 }

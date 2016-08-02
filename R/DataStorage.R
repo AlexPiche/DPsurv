@@ -45,18 +45,18 @@ init.DataStorage.recurrent <- function(dataset, ...){
 
 #'
 #' @export
-simSurvMix <- function(N, prob){
+simSurvMix <- function(N, prob, factor){
     toRet <- data.frame(data=rep(NA,N), status=rep(NA,N))
     for (n in 1:N){
       i <- runif(1)
       if(i < prob[1]){
-        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 1.5*3.75, beta0.ev = 3.75, dist.ev = "weibull")[,c('stop', 'status')]
+        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = factor*3.75, beta0.ev = 3.75, dist.ev = "weibull")[,c('stop', 'status')]
       }else if(i < sum(prob[1:2])){
-        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 1.5*3.887, beta0.ev = 3.887, dist.ev = "lnorm", dist.cens = "lnorm")[,c('stop', 'status')]
+        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = factor*3.887, beta0.ev = 3.887, dist.ev = "lnorm", dist.cens = "lnorm")[,c('stop', 'status')]
       }else if(i < sum(prob[1:3])){
-        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 3, foltime = 10000, anc.cens = 3, beta0.cens = 1.5*4.5, beta0.ev = 4.5, dist.ev = "weibull")[,c('stop', 'status')]
+        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 3, foltime = 10000, anc.cens = 3, beta0.cens = factor*4.5, beta0.ev = 4.5, dist.ev = "weibull")[,c('stop', 'status')]
       }else{
-        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 1.5*8, beta0.ev = 8, dist.ev = "weibull")[,c('stop', 'status')]
+        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = factor*8, beta0.ev = 8, dist.ev = "weibull")[,c('stop', 'status')]
       }
     }
     toRet
@@ -74,12 +74,12 @@ simRecSurvMix <- function(){
 
 #'
 #' @export
-sim.data <- function(weights, n=500, J=20, validation_prop=0.1){
+sim.data <- function(weights, n=500, J=20, validation_prop=0.1, factor=1){
   N <-  J*n
   
-  T1 <- simSurvMix(N, c(weights)[1:3])#c(0.6,0.4,0,0))     
-  T2 <- simSurvMix(N, c(weights)[4:6])#c(0.25,.75,0,0))       
-  T3 <- simSurvMix(N, c(weights)[7:9])#c(0.25,0,0.75,0))
+  T1 <- simSurvMix(N, c(weights)[1:3], factor=factor)#c(0.6,0.4,0,0))     
+  T2 <- simSurvMix(N, c(weights)[4:6], factor=factor)#c(0.25,.75,0,0))       
+  T3 <- simSurvMix(N, c(weights)[7:9], factor=factor)#c(0.25,0,0.75,0))
   
   T1$TrueDistribution <- "T1"
   T2$TrueDistribution <- "T2"

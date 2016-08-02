@@ -2,6 +2,8 @@
 #' @export
 setClass("ChainStorage", representation(chains='list'))
 
+#'
+#' @export
 init.ChainStorage <- function(Chains, iterations, thinning, ...){
   ChainStorage <- new('ChainStorage')
   chains <- list()

@@ -15,7 +15,7 @@
 #'}
 #'
 #' @export
-setClass("HDP", representation(phi = 'matrix', theta='matrix', weights='matrix', Nmat='matrix', details='list',
+setClass("HDP", representation(phi = 'matrix', theta='matrix', weights='matrix', Nmat='matrix', details='list', conc_param = 'numeric',
                               prior = 'array', L = 'numeric', J = 'numeric', Chains='list', ChainStorage='ChainStorage'))
 
 #'
@@ -26,6 +26,7 @@ init.HDP <- function(HDP, prior, L, J, thinning, burnin, max_iter, ...){
   HDP@prior <- array(rep(c(prior$mu, prior$n, prior$v, prior$vs2), each=(L*J)), c(L,J,4))
   HDP@Nmat <- matrix(0, nrow=L, ncol=J)
   HDP@details <- list(iteration=0, thinning=thinning, burnin=burnin, max_iter=max_iter)
+  HDP@conc_param <- c(1,1)#rgamma(2,1,1)
   HDP <- update.HDP(HDP)
   HDP@Chains <- list(theta=HDP@theta, phi=HDP@phi, weights=HDP@weights)
   HDP@ChainStorage <- init.ChainStorage(HDP@Chains, max_iter-burnin, thinning)
@@ -35,26 +36,29 @@ init.HDP <- function(HDP, prior, L, J, thinning, burnin, max_iter, ...){
 #'
 #' @export
 update.HDP <- function(HDP, ...){
+  #print(HDP@conc_param)
   atoms <- rNIG(HDP@L, c(HDP@prior[,,1]), c(HDP@prior[,,2]), c(HDP@prior[,,3]), c(HDP@prior[,,4]))
   HDP@theta <- matrix(atoms[,1], nrow=HDP@L)
   HDP@phi <- matrix(atoms[,2], nrow=HDP@L)
   # 1st level
-  sums <- mySums(round(c(HDP@prior[,,2])))
-  beta_0 <- rbeta(HDP@L, shape1 = 1 + c(HDP@prior[,,2]), shape2 = 1 + sums)
-  beta_0 <- stickBreaking(beta_0)
+  sums <- mySums(round(c(HDP@prior[,1,2])))
+  u_k <- rbeta(HDP@L, shape1 = 1 + c(HDP@prior[,1,2]), shape2 = HDP@conc_param[1] + sums)
+  beta_0 <- stickBreaking(u_k)
   
   # 2nd level
-  zz <- matrix(apply(HDP@Nmat, 2, mySums), nrow=1)
-  kk <- matrix(HDP@Nmat, nrow=1)
+  sumsNmat <- matrix(apply(HDP@Nmat, 2, mySums), nrow=dim(HDP@Nmat)[1])
   alpha <- 1
   sums <- sapply(1:HDP@L, function(i) {alpha*(1-sum(beta_0[1:i]))})
   sums[which(sums < 0)] <- 0
   
-  beta_j <- rbeta(HDP@J*HDP@L, rep(beta_0, HDP@J)+kk, 
-                  zz+rep(sums, HDP@J))
-  beta_j <- matrix(beta_j, ncol = HDP@J, byrow = F)
+  v_lk <- rbeta(HDP@J*HDP@L, HDP@conc_param[2]*rep(beta_0, HDP@J)+c(HDP@Nmat), c(sumsNmat)+HDP@conc_param[2]*rep(sums, HDP@J))
+  v_lk <- matrix(v_lk, ncol = HDP@J, byrow = F)
   
-  HDP@weights <- apply(beta_j, 2, stickBreaking)
+  HDP@weights <- apply(v_lk, 2, stickBreaking)
+  #a_conc <- 1
+  #b_conc <- 1
+  #HDP@conc_param[1] <- rgamma(1, a_conc + HDP@L - 1, b_conc - sum(log(1-u_k[1:HDP@L-1])))
+  #HDP@conc_param[2] <- rgamma(1, a_conc + HDP@J*(HDP@L-1), b_conc - sum(log(1-v_lk[-c(seq(HDP@L, HDP@J*HDP@L, HDP@L), which(v_lk==1))])))
   return(HDP)
 }
 
@@ -103,7 +107,7 @@ MCMC.HDP <- function(HDP, DataStorage, iter, ...){
 validate.HDP <- function(HDP, DataStorage){
   HDP <- posterior.DP(HDP, 0.5)
   DataStorage <- update_validation_set(DataStorage)
-  score <- validate(data=DataStorage@validation$data, status=DataStorage@validation$status, zeta=as.numeric(data@validation$Sample),#zeta=DataStorage@validation$xi,
+  score <- validate(data=DataStorage@validation$data, status=DataStorage@validation$status, zeta=as.numeric(DataStorage@validation$Sample),#zeta=DataStorage@validation$xi,
                     theta=matrix(rep(c(HDP@theta), HDP@J), ncol=HDP@J), phi=matrix(rep(c(HDP@phi), HDP@J), ncol=HDP@J), weights=HDP@weights)
   return(score)
 }
