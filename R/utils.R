@@ -69,14 +69,14 @@ stabilize <- function(mat){
 #'
 #' @export
 BrierScore <- function(probability, status){
-  toRet <- mean((probability-status)^2)
-  return(toRet)
+  toRet <- (probability-status)^2
+  return(mean(toRet, na.rm=T))
 }
 
 MeanLogScore <- function(probability, status){
   #toRet <- status * log(probability) + (1-status) * log(1-probability)
   toRet <- ifelse((1-status),log(1-probability),log(probability))
-  return(mean(toRet))
+  return(mean(toRet, na.rm = T))
 }
 
 #'
@@ -98,6 +98,7 @@ validate <- function(data, status, zeta, theta, phi, weights, ...){
     probability[i] <- 1-evaluate.ICDF(theta=theta[, zeta[i]], phi=phi[, zeta[i]], weights=weights[, zeta[i]],
                                     grid=data[i])
   }
+  browser()
   toRet <- c(BrierScore(probability, status), MeanLogScore(probability, status))
   return(toRet)
 }

@@ -1,7 +1,7 @@
 #'
 #' @export
 setClass("DataStorage", representation(presentation='data.frame', computation='numeric', simulation='numeric', validation='data.frame',
-                                       grid='numeric', mask='numeric', censoring='numeric', episode='matrix', xi='numeric'))
+                                       grid='numeric', mask='numeric', censoring='numeric', episode='matrix'))#, xi='numeric'))
 
 
 
@@ -33,7 +33,7 @@ init.DataStorage.simple <- function(dataset, fraction_test, ...){
   max_grid <- ceiling(round(1.5*max(dataset$data)))
   DataStorage@grid <- seq(1, max_grid, round(max_grid/500))
   DataStorage@mask <-rowSums(!is.na(computation))
-  DataStorage@xi <- rep(0, 2)
+  #DataStorage@xi <- rep(0, 2)
   return(DataStorage)
 }
 
@@ -74,7 +74,7 @@ simRecSurvMix <- function(){
 
 #'
 #' @export
-sim.data <- function(weights, n=500, J=20, validation_prop=0.1, factor=1){
+sim.data <- function(weights, n, J, validation_prop=0.1, factor=1){
   N <-  J*n
   
   T1 <- simSurvMix(N, c(weights)[1:3], factor=factor)#c(0.6,0.4,0,0))     

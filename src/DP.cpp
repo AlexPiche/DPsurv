@@ -252,16 +252,14 @@ if(F){
                 burnin = 500, max_iter = 5000, clustering = T )
   G1 <- MCMC.DP(G1, data, 1000)
   g1 <- validate.DP(G1, data)
-  #plot.ICDF(G1@theta, G1@phi, G1@weights, G1@L, grid=0:500,
-  #          distribution=data@presentation, xlim=500)
+  plot.ICDF(G@theta[1], G@phi[1], 1, G@L, grid=0:500,
+            distribution=data@presentation, xlim=500)
   
   G2 <- new("NDP")
   G2 <- init.NDP(G2, prior=list(mu=0, n=0.1, v=3, vs2=1*3),K=5, L=35, thinning=2,
                  burnin = 500, max_iter = 5000 )
   G2 <- MCMC.NDP(G2, data, 1000)
   g2<-validate.NDP(G2, data)
-  #plot.ICDF(G2@theta[,which.max(G2@pi)], G2@phi[,which.max(G2@pi)], G2@weights[,which.max(G2@pi)],
-  #          G2@L, grid=0:500, distribution=data@presentation, xlim=500)
   
   G3 <- new("HDP")
   G3 <- init.HDP(G3, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=15, 

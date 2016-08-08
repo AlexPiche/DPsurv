@@ -2,25 +2,25 @@
 #'DP applied to censored data
 #'@examples
 #'\dontrun{
-#'weights <- matrix(c(0,1,0,0,1,0,0,1,0), ncol=3)
-#'data <- sim.data(weights)
-#'  G1 <- init.DP(G1, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=35, thinning=2,
-#'  burnin = 0, max_iter = 5000, clustering = T )
-#'  G1 <- MCMC.DP(G1, data, 500)
-#plot.ICDF(G1@theta, G1@phi, G1@weights, G1@L, grid=0:500,
-#          distribution=data@presentation, xlim=500)
+#'weights <- matrix(c(1,0,0,0,1,0,0,0,1), ncol=3)
+#'data <- sim.data(n=100, J=10, weights)
+#'G1 <- new("DP")
+#'  G1 <- init.DP(G1, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=35, thinning=20,
+#'  burnin = 5000, max_iter = 55000 )
+#'  G1 <- MCMC.DP(G1, data, 5500)
+#'  plot.ICDF(G1@theta, G1@phi, G1@weights, G1@L, grid=0:500,
+#'            distribution=data@presentation, xlim=500)
 #'validate.DP(G1, data)
 #'}
 #'
 #' @export
-setClass("DP", representation(weights = 'matrix', phi = 'matrix', theta = 'matrix', details='list', clustering = 'logical',
+setClass("DP", representation(weights = 'matrix', phi = 'matrix', theta = 'matrix', details='list',
                               prior = 'array', L = 'numeric', Chains='list', ChainStorage='ChainStorage'))
 
 #'
 #' @export
-init.DP <- function(DP, prior, L, thinning, burnin, max_iter, clustering=F, ...){
+init.DP <- function(DP, prior, L, thinning, burnin, max_iter,  ...){
   DP@L <- L
-  DP@clustering <- clustering
   DP@prior <- array(rep(c(prior$mu, prior$n, prior$v, prior$vs2), each=(L)), c(L,1,4))
   DP <- update.DP(DP)
   DP@Chains <- list(theta=DP@theta, phi=DP@phi, weights=DP@weights)
@@ -47,7 +47,7 @@ selectXi.DP <- function(DP, DataStorage, max_lik=F){
     xx <- eStep(DP@theta, DP@phi, DP@weights, DataStorage)
     xx <- stabilize(xx)
     zz <- array(xx, c(DP@L, max(DataStorage@mask), length(DataStorage@mask)))
-    rr <- if(DP@clustering) apply(zz, 3, rowSums, na.rm=T) else xx
+    rr <- apply(zz, 3, rowSums, na.rm=T)
     xi <- apply(rr, 2, DP_sample, n=DP@L, size=1, replace=F, max_lik=max_lik)
     if(length(xi) != length(DataStorage@computation)) {
       xi <- rep(xi, each=max(DataStorage@mask))
@@ -76,22 +76,17 @@ MCMC.DP <- function(DP, DataStorage, iter, ...){
       DP@ChainStorage <- saveChain.ChainStorage(DP@Chains, (DP@details[["iteration"]]-DP@details[["burnin"]])/DP@details[["thinning"]], DP@ChainStorage)
     }
   }
+  DP <- posterior.DP(DP, 0.5)
   return(DP)
 }
 
 #'
 #' @export
 validate.DP <- function(DP, DataStorage){
-  DP <- posterior.DP(DP, 0.5)
-  if(DP@clustering){
-    xi <- selectXi.DP(DP, DataStorage, max_lik = T)
-    DataStorage@presentation$xi <- xi[!is.na(xi)] #rep(xi, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
-    DataStorage <- update_validation_set(DataStorage)
-    score <- validate(data=DataStorage@validation$data, status=DataStorage@validation$status, zeta=DataStorage@validation$xi,
-                      theta=t(DP@theta), phi=t(DP@phi), weights=diag(DP@L))
-  }else{
-    score <- validate(data=DataStorage@validation$data, status=DataStorage@validation$status, zeta=rep(1, length(DataStorage@validation$status)),
-                      theta=DP@theta, phi=DP@phi, weights=DP@weights)
-  }
+  xi <- selectXi.DP(DP, DataStorage, max_lik = T)
+  DataStorage@presentation$xi <- xi[!is.na(xi)] #rep(xi, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
+  DataStorage <- update_validation_set(DataStorage)
+  score <- validate(data=DataStorage@validation$data, status=DataStorage@validation$status, zeta=DataStorage@validation$xi,
+                    theta=t(DP@theta), phi=t(DP@phi), weights=diag(DP@L))
   return(score)
 }
