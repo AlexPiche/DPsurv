@@ -12,15 +12,21 @@ HDP applied to censored data
 \examples{
 \dontrun{
 weights <- matrix(c(1,0,0,0,1,0,0,0,1), ncol=3)
-data <- sim.data(weights)
+
+data <- sim.data(n=100, J=10, weights)
+
 G3 <- new("HDP")
+
 G3 <- init.HDP(G3, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=15, 
-                   J=length(unique(data@presentation$Sample)), thinning=2,
+                   J=length(unique(data@presentation$Sample)), thinning=50,
                    burnin = 5000, max_iter = 55000)
+                   
 G3 <- MCMC.HDP(G3, data, 55000)
+
+validate.HDP(G3, data)
+
 plot.ICDF(G3@theta, G3@phi, G3@weights[,1], G3@L, grid=0:500,
            distribution=data@presentation, xlim=500)
-validate.HDP(G3, data)
 }
 
 }

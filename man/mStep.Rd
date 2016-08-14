@@ -4,7 +4,7 @@
 \alias{mStep}
 \title{mStep}
 \usage{
-mStep(DP, DataStorage, xi, zeta)
+mStep(prior, data, xi, zeta)
 }
 \description{
 Return the parameters' posterior.

@@ -52,8 +52,17 @@ posterior.DP <- function(DP, quantiles){
   DP@theta <- csMedian[["theta"]]
   DP@phi <- csMedian[["phi"]]
   DP@weights <- csMedian[["weights"]]
-  if(length(csMedian[["pi"]]) > 1) DP@pi <- csMedian[["pi"]]
+  DP@weights <- apply(DP@weights, 2, normalizeVec)
+  #DP@RE@computation <- csMedian[["RE"]]
+  if(length(csMedian[["pi"]]) > 1) DP@pi <- normalizeVec(normalizeVec(csMedian[["pi"]]))
   return(DP)
+}
+
+#'
+#' @export
+normalizeVec <- function(vec){
+  toRet <- vec/sum(vec)
+  return(toRet)
 }
 
 #'

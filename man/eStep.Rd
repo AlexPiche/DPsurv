@@ -4,7 +4,7 @@
 \alias{eStep}
 \title{eStep}
 \usage{
-eStep(theta, phi, w, DataStorage)
+eStep(data, censoring, theta, phi, w)
 }
 \description{
 Determines to which cluster belongs an obervation, and a group of observations.

@@ -15,10 +15,6 @@ rtruncnorm <- function(y, mu, sigma, K = 1L) {
     .Call('DPsurv_rtruncnorm', PACKAGE = 'DPsurv', y, mu, sigma, K)
 }
 
-vec2mat <- function(x, nb) {
-    .Call('DPsurv_vec2mat', PACKAGE = 'DPsurv', x, nb)
-}
-
 #' @title
 #' eStep
 #' @description
@@ -29,8 +25,8 @@ vec2mat <- function(x, nb) {
 #' @param w
 #' @param DataStorage
 #' @export
-eStep <- function(theta, phi, w, DataStorage) {
-    .Call('DPsurv_eStep', PACKAGE = 'DPsurv', theta, phi, w, DataStorage)
+eStep <- function(data, censoring, theta, phi, w) {
+    .Call('DPsurv_eStep', PACKAGE = 'DPsurv', data, censoring, theta, phi, w)
 }
 
 #' @title
@@ -43,8 +39,8 @@ eStep <- function(theta, phi, w, DataStorage) {
 #' @param xi
 #' @param zeta
 #' @export
-mStep <- function(DP, DataStorage, xi, zeta) {
-    .Call('DPsurv_mStep', PACKAGE = 'DPsurv', DP, DataStorage, xi, zeta)
+mStep <- function(prior, data, xi, zeta) {
+    .Call('DPsurv_mStep', PACKAGE = 'DPsurv', prior, data, xi, zeta)
 }
 
 #' @title

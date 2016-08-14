@@ -31,89 +31,6 @@ double rtruncnorm(double y, double mu, double sigma, int K=1){
   return mean(draws) == arma::datum::inf ? y : mean(draws);
 }
 
-// [[Rcpp::export]]
-NumericMatrix vec2mat(NumericVector x, int nb) {
-  NumericMatrix toRet(nb, x.size());
-  for (int i = 0; i < nb; i++) {
-    toRet.row(i) = x;
-  }
-  return toRet;
-}
-
-NumericVector rowSumsC(NumericMatrix x) {
-  int nrow = x.nrow(), ncol = x.ncol();
-  NumericVector out(nrow);
-  
-  for (int i = 0; i < nrow; i++) {
-    double total = 0;
-    for (int j = 0; j < ncol; j++) {
-      total += x(i, j);
-    }
-    out[i] = total;
-  }
-  return out;
-}
-
-
-NumericVector colSumsC(NumericMatrix x) {
-  int nrow = x.nrow(), ncol = x.ncol();
-  NumericVector out(ncol);
-  
-  for (int i = 0; i < ncol; i++) {
-    double total = 0;
-    for (int j = 0; j < nrow; j++) {
-      total += x(j, i);
-    }
-    out[i] = total;
-  }
-  return out;
-}
-
-
-NumericVector MaxPerCol(NumericMatrix X){
-  NumericVector toRet(X.ncol());
-  for(int i = 0; i < X.ncol(); i++){
-    NumericVector Xi = X.column(i);
-    toRet[i] = Rcpp::max(Xi);
-  }
-  return toRet;
-}
-
-NumericMatrix elementWiseSubstraction(NumericMatrix X, NumericMatrix Y) {
-  int nrow = X.nrow(), ncol = X.ncol();
-  NumericMatrix out(nrow, ncol);
-  
-  for (int i = 0; i < ncol; i++) {
-    for (int j = 0; j < nrow; j++) {
-      out(j,i) = X(j,i) - Y(j,i) ;
-    }
-  }
-  return out;
-}
-
-
-
-NumericMatrix elementExp(NumericMatrix X) {
-  int nrow = X.nrow(), ncol = X.ncol();
-  NumericMatrix out(nrow, ncol);
-  
-  for (int i = 0; i < ncol; i++) {
-    for (int j = 0; j < nrow; j++) {
-      double Xji = X(j,i);
-      out(j,i) = exp(Xji);
-    }
-  }
-  return out;
-}
-
-NumericVector dropNA(NumericVector data, int mask){
-  NumericVector out(mask);
-  for(int i = 0; i<mask; i++){
-    out(i) = data(i);
-  }
-  return out;
-}
-
 
 //' @title
 //' eStep
@@ -126,9 +43,9 @@ NumericVector dropNA(NumericVector data, int mask){
 //' @param DataStorage
 //' @export
 // [[Rcpp::export]]
-NumericMatrix eStep(NumericVector theta, NumericVector phi, NumericVector w, S4 DataStorage) {
-  NumericVector censoring = DataStorage.slot("censoring");
-  NumericVector data = DataStorage.slot("computation");
+NumericMatrix eStep(NumericVector data, NumericVector censoring, NumericVector theta, NumericVector phi, NumericVector w) {
+  //NumericVector censoring = DataStorage.slot("censoring");
+  //NumericVector data = DataStorage.slot("computation");
   const int N = data.length();
   const int L = theta.length();
   NumericMatrix myMat(L, N);
@@ -156,11 +73,11 @@ NumericMatrix eStep(NumericVector theta, NumericVector phi, NumericVector w, S4 
 //' @param zeta
 //' @export
 // [[Rcpp::export]]
-S4 mStep(S4 DP, S4 DataStorage, IntegerVector xi, IntegerVector zeta){
-  NumericVector data = DataStorage.slot("simulation");
+arma::cube mStep(arma::cube prior, NumericVector data, IntegerVector xi, IntegerVector zeta){
+  //NumericVector data = DataStorage.slot("simulation");
   const int N = data.length();
   
-  arma::cube prior = DP.slot("prior");
+  //arma::cube prior = DP.slot("prior");
   
   arma::mat mu = prior.slice(0);
   arma::mat Nmat = prior.slice(1);
@@ -182,7 +99,6 @@ S4 mStep(S4 DP, S4 DataStorage, IntegerVector xi, IntegerVector zeta){
     if(data(n) == data(n)){
       temp = xi[n];
       const int l = temp - 1;
-      
       temp = zeta[n];
       const int k = temp - 1;
       
@@ -202,8 +118,8 @@ S4 mStep(S4 DP, S4 DataStorage, IntegerVector xi, IntegerVector zeta){
   posterior.slice(2) = v;
   posterior.slice(3) = vs2;
   
-  DP.slot("prior") = posterior;
-  return DP;
+  //DP.slot("prior") = posterior;
+  return posterior;
 }
 
 //' @title
@@ -241,47 +157,3 @@ S4 gibbsStep(S4 DP, S4 DataStorage, IntegerVector xi, IntegerVector zeta){
   DataStorage.slot("simulation") = toRetData;
   return DataStorage;
 }
-
-/*** R
-if(F){
-  library(DPsurv)
-  weights <- matrix(c(0,1,0,0,1,0,0,1,0), ncol=3)
-  data <- sim.data(weights)
-  G1 <- new("DP")
-  G1 <- init.DP(G1, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=35, thinning=2,
-                burnin = 500, max_iter = 5000, clustering = T )
-  G1 <- MCMC.DP(G1, data, 1000)
-  g1 <- validate.DP(G1, data)
-  plot.ICDF(G@theta[1], G@phi[1], 1, G@L, grid=0:500,
-            distribution=data@presentation, xlim=500)
-  
-  G2 <- new("NDP")
-  G2 <- init.NDP(G2, prior=list(mu=0, n=0.1, v=3, vs2=1*3),K=5, L=35, thinning=2,
-                 burnin = 500, max_iter = 5000 )
-  G2 <- MCMC.NDP(G2, data, 1000)
-  g2<-validate.NDP(G2, data)
-  
-  G3 <- new("HDP")
-  G3 <- init.HDP(G3, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=15, 
-                 J=length(unique(data@presentation$Sample)), thinning=2,
-                 burnin = 500, max_iter = 5000)
-  G3 <- MCMC.HDP(G3, data, 1000)
-  g3<-validate.HDP(G3, data)
-  zz<-cbind(g1,g2,g3)
-  G3 <- posterior.DP(G3, 0.5)
-  plot.ICDF(G3@theta, G3@phi, G3@weights[,1], G3@L, grid=0:500,
-            distribution=data@presentation, xlim=500)
-  set.seed(123)
-  data <- sim.data()
-  
-  set.seed(123)
-  G2 <- new("NDP")
-  G2 <- init.NDP(G2, prior=list(mu=0, n=0.1, v=3, vs2=1*3), K=3, L=55)
-  G2 <- MCMC.NDP(G2, data, 25)
-  plot.ICDF(G2@theta[,2], G2@phi[,2], G2@weights[,2], G2@L, grid=0:50,
-            distribution=data@presentation, xlim=50)
-  G3 <- init.HDP(G3, prior=list(mu=0, n=0.1, v=3, vs2=1*3), 55, 2)
-  profvis({MCMC.NDP(G2,data, 5000)})
-}
-print("done")
-*/

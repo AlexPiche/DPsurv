@@ -22,7 +22,7 @@ rNIG <- function(n, mu_0, n_0, v_0, vs2_0){
 
 #'
 #' @export
-mySums <- function(m){
+remainingSum <- function(m){
   M <- length(m)
   sums <- sapply(1:M, function(i) {sum(m[(i+1):M])})
   sums[M] <- 0
@@ -73,7 +73,9 @@ BrierScore <- function(probability, status){
   return(mean(toRet, na.rm=T))
 }
 
-MeanLogScore <- function(probability, status){
+#'
+#' @export
+LogScore <- function(probability, status){
   #toRet <- status * log(probability) + (1-status) * log(1-probability)
   toRet <- ifelse((1-status),log(1-probability),log(probability))
   return(mean(toRet, na.rm = T))
@@ -95,11 +97,31 @@ DP_sample <- function(n, size = n, replace = FALSE, prob = NULL, max_lik = F){
 validate <- function(data, status, zeta, theta, phi, weights, ...){
   probability <- rep(NA, length(data))
   for(i in 1:length(data)){
-    probability[i] <- 1-evaluate.ICDF(theta=theta[, zeta[i]], phi=phi[, zeta[i]], weights=weights[, zeta[i]],
-                                    grid=data[i])
+    if(!is.na(zeta[i])){
+      probability[i] <- 1-evaluate.ICDF(theta=theta[, zeta[i]], phi=phi[, zeta[i]], weights=weights[, zeta[i]],
+                                        grid=data[i])
+    }
   }
-  browser()
-  toRet <- c(BrierScore(probability, status), MeanLogScore(probability, status))
+  toRet <- c(BrierScore(probability, status), LogScore(probability, status))
   return(toRet)
 }
 
+#'
+#'@export
+mappingMu <- function(xi, zeta, mu,...){
+  toRet <- rep(NA, length(xi))
+  for(i in 1:length(xi)){
+    toRet[i] <- mu[xi[i],zeta[i]]
+  }
+  #toRet <- matrix(toRet, ncol=1)
+  toRet <- as.numeric(toRet)
+  return(toRet)
+}
+
+#'
+#'@export
+progressBar <- function(frac, ...){
+  pb <- txtProgressBar(...)
+  setTxtProgressBar(pb, frac)
+  close(pb)
+}

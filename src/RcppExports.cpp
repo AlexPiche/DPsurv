@@ -20,43 +20,32 @@ BEGIN_RCPP
     return __result;
 END_RCPP
 }
-// vec2mat
-NumericMatrix vec2mat(NumericVector x, int nb);
-RcppExport SEXP DPsurv_vec2mat(SEXP xSEXP, SEXP nbSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject __result;
-    Rcpp::RNGScope __rngScope;
-    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
-    Rcpp::traits::input_parameter< int >::type nb(nbSEXP);
-    __result = Rcpp::wrap(vec2mat(x, nb));
-    return __result;
-END_RCPP
-}
 // eStep
-NumericMatrix eStep(NumericVector theta, NumericVector phi, NumericVector w, S4 DataStorage);
-RcppExport SEXP DPsurv_eStep(SEXP thetaSEXP, SEXP phiSEXP, SEXP wSEXP, SEXP DataStorageSEXP) {
+NumericMatrix eStep(NumericVector data, NumericVector censoring, NumericVector theta, NumericVector phi, NumericVector w);
+RcppExport SEXP DPsurv_eStep(SEXP dataSEXP, SEXP censoringSEXP, SEXP thetaSEXP, SEXP phiSEXP, SEXP wSEXP) {
 BEGIN_RCPP
     Rcpp::RObject __result;
     Rcpp::RNGScope __rngScope;
+    Rcpp::traits::input_parameter< NumericVector >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type censoring(censoringSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type theta(thetaSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type phi(phiSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type w(wSEXP);
-    Rcpp::traits::input_parameter< S4 >::type DataStorage(DataStorageSEXP);
-    __result = Rcpp::wrap(eStep(theta, phi, w, DataStorage));
+    __result = Rcpp::wrap(eStep(data, censoring, theta, phi, w));
     return __result;
 END_RCPP
 }
 // mStep
-S4 mStep(S4 DP, S4 DataStorage, IntegerVector xi, IntegerVector zeta);
-RcppExport SEXP DPsurv_mStep(SEXP DPSEXP, SEXP DataStorageSEXP, SEXP xiSEXP, SEXP zetaSEXP) {
+arma::cube mStep(arma::cube prior, NumericVector data, IntegerVector xi, IntegerVector zeta);
+RcppExport SEXP DPsurv_mStep(SEXP priorSEXP, SEXP dataSEXP, SEXP xiSEXP, SEXP zetaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject __result;
     Rcpp::RNGScope __rngScope;
-    Rcpp::traits::input_parameter< S4 >::type DP(DPSEXP);
-    Rcpp::traits::input_parameter< S4 >::type DataStorage(DataStorageSEXP);
+    Rcpp::traits::input_parameter< arma::cube >::type prior(priorSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type data(dataSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type xi(xiSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type zeta(zetaSEXP);
-    __result = Rcpp::wrap(mStep(DP, DataStorage, xi, zeta));
+    __result = Rcpp::wrap(mStep(prior, data, xi, zeta));
     return __result;
 END_RCPP
 }

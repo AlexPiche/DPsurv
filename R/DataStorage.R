@@ -31,7 +31,7 @@ init.DataStorage.simple <- function(dataset, fraction_test, ...){
   DataStorage@computation <- log(c(t(computation)))
   DataStorage@simulation <- DataStorage@computation
   max_grid <- ceiling(round(1.5*max(dataset$data)))
-  DataStorage@grid <- seq(1, max_grid, round(max_grid/500))
+  DataStorage@grid <- seq(0, max_grid, round(max_grid/250))
   DataStorage@mask <-rowSums(!is.na(computation))
   #DataStorage@xi <- rep(0, 2)
   return(DataStorage)
@@ -104,5 +104,7 @@ sim.data <- function(weights, n, J, validation_prop=0.1, factor=1){
 update_validation_set <- function(DataStorage, ...){
   mapping <- unique(DataStorage@presentation[, c("xi", "Sample")])
   DataStorage@validation$xi <- plyr::mapvalues(DataStorage@validation$Sample, mapping$Sample, mapping$xi, warn_missing=F)
+  #DataStorage@validation$xi[which(DataStorage@validation$xi == DataStorage@validation$Sample)] <- NA
+  #DataStorage@validation$xi <- as.numeric(DataStorage@validation$xi)
   return(DataStorage)
 }
