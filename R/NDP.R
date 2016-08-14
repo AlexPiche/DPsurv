@@ -67,15 +67,11 @@ update.NDP <- function(NDP, ...){
 selectZetaXi.NDP <- function(NDP, DataStorage, max_lik=F, ...){
   log_prob <- DPsurv::eStep(data=DataStorage@computation, censoring=DataStorage@censoring, theta=c(NDP@theta), phi=c(NDP@phi), w=c(NDP@weights))
   log_prob <- array(log_prob, c(NDP@L, NDP@K, max(DataStorage@mask)*length(DataStorage@mask)))
-  xx <- apply(exp(log_prob), 3, colSums)
-  xx <- array(xx, c(NDP@K, max(DataStorage@mask), length(DataStorage@mask)))
-  DP_prob <- t(apply(xx, 3, rowSums, na.rm=T))
-  weighted_DP_prob <- exp(log(DP_prob)+log(matrix(rep(NDP@pi, dim(DP_prob)[1]), ncol=NDP@K, byrow = T)))
-  zeta <- apply(weighted_DP_prob, 1, DP_sample, n=NDP@K, size=1, replace=F, max_lik=max_lik)
-  #browser()
   log_prob <- aperm(log_prob, c(1,3,2))
   reshape_log_prob <- array(log_prob, c(NDP@L, max(DataStorage@mask), length(DataStorage@mask), NDP@K))
-  #DP_prob <- apply(exp(reshape_log_prob), c(3,4), sum, na.rm=T)
+  DP_prob <- apply(exp(reshape_log_prob), c(3,4), sum, na.rm=T)
+  weighted_DP_prob <- exp(log(DP_prob)+log(matrix(rep(NDP@pi, dim(DP_prob)[1]), ncol=NDP@K, byrow = T)))
+  zeta <- apply(weighted_DP_prob, 1, DP_sample, n=NDP@K, size=1, replace=F, max_lik=max_lik)
   atom_log_prob <- sapply(1:length(zeta), function(i) return(reshape_log_prob[,, i, zeta[i]]))
   atom_log_prob <- matrix(atom_log_prob, nrow=NDP@L)
   atom_prob <- stabilize(atom_log_prob)
@@ -92,7 +88,7 @@ selectZetaXi.NDP_c <- compiler::cmpfun(selectZetaXi.NDP)
 #' @export
 MCMC.NDP <- function(NDP, DataStorage, iter, ...){
   j <- 0
-  pb <- txtProgressBar(...)
+  pb <- txtProgressBar(style = 3)
   while(NDP@details[['iteration']] < NDP@details[['max_iter']] & j < iter){
     
     NDP@details[['iteration']] <- NDP@details[['iteration']] + 1
