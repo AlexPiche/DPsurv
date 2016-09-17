@@ -19,12 +19,14 @@ plot.PDF <- function(theta, phi, weights, L, grid, emp_data, xlim, ...){
 
 #'
 #' @export
-plot.ICDF <- function(theta, phi, weights, L, grid, xlim, distribution, ...){
+plot.ICDF <- function(DP, myZeta, data, ...){
+  data <- subset(data, zeta == myZeta)
+  temp <- data[,c("status", "data", "Sample")]
   
-  temp <- distribution[,c("status", "data", "Sample")]
+  xlim <- 1.25*max(temp$data)
+  grid <- seq(0, xlim, length.out = min(xlim, 1500))
   
   if(dim(temp[temp$status==1,])[1] > 1){
-    #browser()
     s <- with(temp, survival::Surv(data, status))
     LN1 <- survival::survfit(s ~ 1, data=temp)
     xx <- summary(LN1)
@@ -34,26 +36,16 @@ plot.ICDF <- function(theta, phi, weights, L, grid, xlim, distribution, ...){
     KM <- data.frame(Var1=character(), Var2=numeric(), value=numeric())
   }
   
-  #if(posterior){
-  #  weight <- (theObject@iteration - theObject@burnin)/theObject@thinning
-  #  toPlot <- reshape2::melt(apply(theObject@MCMC_ICDF[,DPnb,1:weight], 1, quantile, c(0.025,0.5,0.975), na.rm=T))
-  #  toPlot$Var2 <- rep(theObject@grid,each=3)
-  #}else{
-  toPlot <- evaluate.ICDF(theta, phi, weights, grid)
-  toPlot <- data.frame(toPlot, grid)
-  names(toPlot) <- c("value", "Var2")
-  toPlot$Var1 <- "Estimation"
-  #}
-  if(dim(temp[temp$status==1,])[1] > 3) toPlot <- rbind(KM, toPlot)
-  p <- ggplot2::ggplot(toPlot, ggplot2::aes(x=Var2, y=value, group=Var1, colour=Var1)) + ggplot2::geom_line() +
+  curves <- getICDF.ChainStorage(DP, grid, myZeta, quantiles=c(0.05, 0.5, 0.95))
+  curves <- reshape2::melt(curves)
+  curves$Var2 <- rep(grid, each=3)
+  KM$Var3 <- 1
+  curves <- rbind(KM, curves)
+  
+  p <- ggplot2::ggplot(curves, ggplot2::aes(x=Var2, y=value, group=Var1, colour=Var1)) + ggplot2::geom_line() +
     ggplot2::xlim(0, xlim)+ ggplot2::theme_linedraw() +
-    ggplot2::xlab("Time") + ggplot2::ylab("Survival")+ ggplot2::theme(legend.position="none")# + ggplot2::theme(legend.title = ggplot2::element_blank())
-  #if(posterior){
-  #  if(dim(temp[temp$status==1,])[1] > 3){
-  #    p <- p + ggplot2::scale_color_manual(values=c("black","lightskyblue2", 'blue', "lightskyblue2")) + ggplot2::scale_linetype_manual(values = c("dashed", rep("solid", 3)))
-  #  }else{
-  #    p <- p + ggplot2::scale_color_manual(values=c("lightskyblue2", 'blue', "lightskyblue2"))
-  #  }
-  #}
+    ggplot2::xlab("Time") + ggplot2::ylab("Survival")+ ggplot2::theme(legend.position="none") + ggplot2::theme(legend.title = ggplot2::element_blank())  
+  p <- p + ggplot2::scale_color_manual(values=c("black","lightskyblue2", 'blue', "lightskyblue2")) + ggplot2::scale_linetype_manual(values = c("dashed", rep("solid", 3)))
+  
   return(p)
 }

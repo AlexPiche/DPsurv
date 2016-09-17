@@ -43,18 +43,27 @@ init.DataStorage.recurrent <- function(dataset, ...){
   return(-1)
 }
 
+findRt <- function(x){
+  xx <- survsim::simple.surv.sim(1000, anc.ev = 3, foltime = 10000, anc.cens = 3, beta0.cens = x, beta0.ev = 4.5, dist.ev = "weibull")[,c('stop', 'status')]
+  return(sum(xx$status)/1000-0.85)
+}
+
 #'
 #' @export
 simSurvMix <- function(N, prob, factor){
+  # 15% censoring
     toRet <- data.frame(data=rep(NA,N), status=rep(NA,N))
     for (n in 1:N){
       i <- runif(1)
       if(i < prob[1]){
-        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = factor*3.75, beta0.ev = 3.75, dist.ev = "weibull")[,c('stop', 'status')]
+        # -log(1/uniroot(function(x) pweibull(x,a1,b1)-0.85, interval=c(0,exp(150)))$root)
+        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 5.522906, beta0.ev = 3.75, dist.ev = "weibull")[,c('stop', 'status')]
       }else if(i < sum(prob[1:2])){
-        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = factor*3.887, beta0.ev = 3.887, dist.ev = "lnorm", dist.cens = "lnorm")[,c('stop', 'status')]
+        # log(uniroot(function(x) plnorm(x,3.887,1)-0.85, interval=c(0,exp(15)))$root)
+        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 5.336191, beta0.ev = 3.887, dist.ev = "lnorm", dist.cens = "lnorm")[,c('stop', 'status')]
       }else if(i < sum(prob[1:3])){
-        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 3, foltime = 10000, anc.cens = 3, beta0.cens = factor*4.5, beta0.ev = 4.5, dist.ev = "weibull")[,c('stop', 'status')]
+        #-log(1/(uniroot(function(x) pweibull(x,a3,b3)-0.85, interval=c(0,exp(150)))$root)^3)
+        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 3, foltime = 10000, anc.cens = 3, beta0.cens = 5.091579, beta0.ev = 4.5, dist.ev = "weibull")[,c('stop', 'status')]
       }else{
         toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = factor*8, beta0.ev = 8, dist.ev = "weibull")[,c('stop', 'status')]
       }
@@ -71,15 +80,31 @@ simRecSurvMix <- function(){
   return(-1)
 }
 
+#'
+#' @export
+getGrid <- function(weights){
+  a1 <- 1
+  b1 <- (1/exp(-1 * 3.75))^(1/1)
+  a2 <- 1
+  b2 <- factor*3.887
+  a3 <- 3
+  b3 <- (1/exp(-3 * (4.5)))^(1/3)
+  myFct <- function(x, weights, pt){
+    weights[1]*pweibull(x,a1,b1)+weights[2]*plnorm(x,b2,a2)+weights[3]*pweibull(x,a3,b3) - pt
+  }
+  rootT1 <- uniroot(function(x) myFct(x, weights=c(weights)[1:3], pt=1), interval = c(-1,5))$root
+}
 
 #'
 #' @export
 sim.data <- function(weights, n, J, validation_prop=0.1, factor=1){
   N <-  J*n
   
-  T1 <- simSurvMix(N, c(weights)[1:3], factor=factor)#c(0.6,0.4,0,0))     
-  T2 <- simSurvMix(N, c(weights)[4:6], factor=factor)#c(0.25,.75,0,0))       
-  T3 <- simSurvMix(N, c(weights)[7:9], factor=factor)#c(0.25,0,0.75,0))
+  T1 <- simSurvMix(N, c(weights)[1:3], factor=factor)
+  T2 <- simSurvMix(N, c(weights)[4:6], factor=factor)
+  T3 <- simSurvMix(N, c(weights)[7:9], factor=factor)
+  
+
   
   T1$TrueDistribution <- "T1"
   T2$TrueDistribution <- "T2"

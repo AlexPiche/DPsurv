@@ -15,9 +15,7 @@ weights <- matrix(c(1,0,0,0,1,0,0,0,1), ncol=3)
 
 data <- sim.data(n=100, J=10, weights)
 
-G1 <- new("DP")
-
-G1 <- init.DP(G1, DataStorage=data, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=35, thinning=50,
+G1 <- init.DP(DataStorage=data, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=35, thinning=50,
           burnin = 5000, max_iter = 55000 )
           
 G1 <- MCMC.DP(G1, data, 55000)

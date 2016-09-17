@@ -15,9 +15,7 @@ weights <- matrix(c(1,0,0,0,1,0,0,0,1), ncol=3)
 
 data <- sim.data(n=100, J=10, weights)
 
-G3 <- new("HDP")
-
-G3 <- init.HDP(G3, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=15, 
+G3 <- init.HDP(prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=15, 
                    J=length(unique(data@presentation$Sample)), thinning=50,
                    burnin = 5000, max_iter = 55000)
                    

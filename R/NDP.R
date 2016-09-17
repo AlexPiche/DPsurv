@@ -6,9 +6,7 @@
 #'
 #'data <- sim.data(n=100, J=10, weights)
 #'
-#'G2 <- new("NDP")
-#'
-#'G2 <- init.NDP(G2, prior=list(mu=0, n=0.1, v=3, vs2=1*3),K=5, L=35, thinning=50,
+#'G2 <- init.NDP(prior=list(mu=0, n=0.1, v=3, vs2=1*3),K=5, L=35, thinning=50,
 #'               burnin = 0, max_iter = 5000 )
 #'               
 #'G2 <- MCMC.NDP(G2, data, 500)
@@ -25,7 +23,8 @@ setClass("NDP", representation(DPs = 'list', K = 'numeric', phi = 'matrix', thet
 
 #'
 #' @export
-init.NDP <- function(NDP, prior, K, L, thinning, burnin, max_iter, ...){
+init.NDP <- function(prior, K, L, thinning, burnin, max_iter, ...){
+  NDP <- new("NDP")
   NDP@K <- K
   NDP@L <- L
   NDP@prior <- array(rep(c(prior$mu, prior$n, prior$v, prior$vs2), each=(K*L)), c(L,K,4))
@@ -104,11 +103,10 @@ MCMC.NDP <- function(NDP, DataStorage, iter, ...){
     if(NDP@details[["iteration"]]>NDP@details[["burnin"]] & (NDP@details[["iteration"]] %% NDP@details[["thinning"]])==0){
       setTxtProgressBar(pb, j/iter)
       NDP@Chains <- list(theta=NDP@theta, phi=NDP@phi, weights=NDP@weights, pi=NDP@pi)
-      NDP@ChainStorage <- saveChain.ChainStorage(NDP@Chains, (NDP@details[["iteration"]]-NDP@details[["burnin"]])/NDP@details[["thinning"]], NDP@ChainStorage)
+      NDP@ChainStorage <- saveChain.ChainStorage(unique(zeta), 1:NDP@L, NDP@Chains, (NDP@details[["iteration"]]-NDP@details[["burnin"]])/NDP@details[["thinning"]], NDP@ChainStorage)
     }
   }
   close(pb)
-  NDP <- posterior.DP(NDP, 0.5)
   return(NDP)
 }
 
@@ -118,13 +116,35 @@ MCMC.NDP_c <- compiler::cmpfun(MCMC.NDP)
 
 #'
 #' @export
-validate.NDP <- function(NDP, DataStorage){
+posteriorZeta.NDP <- function(NDP, DataStorage){
+  NDP <- posterior.DP(NDP, 0.5)
   ZetaXi <- selectZetaXi.NDP(NDP, DataStorage, max_lik = T)
   zeta <- ZetaXi[["zeta"]]
   DataStorage@presentation$zeta <- rep(zeta, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
   DataStorage@validation$zeta <- as.numeric(as.character(plyr::mapvalues(DataStorage@validation$Sample, DataStorage@presentation$Sample, DataStorage@presentation$zeta,  warn_missing=F)))
-  score <- validate(data=DataStorage@validation$data, status=DataStorage@validation$status, zeta=DataStorage@validation$zeta,
-                    theta=NDP@theta, phi=NDP@phi, weights=NDP@weights)
+  return(DataStorage)
+}
+
+#'
+#' @export
+plotICDF.NDP <- function(NDP, DataStorage){
+  DataStorage <- posteriorZeta.NDP(NDP, DataStorage)
+  for(zeta in unique(DataStorage@presentation$zeta)){
+    p <- plot.ICDF(NDP, zeta, DataStorage@presentation) + 
+      ggplot2::ggtitle(paste("NDP", zeta))
+    print(p)
+  }
+}
+
+#'
+#' @export
+validate.NDP <- function(NDP, DataStorage){
+  DataStorage <- posteriorZeta.NDP(NDP, DataStorage)
+  zeta <- unique(DataStorage@presentation$zeta)
+  medianCurves <- getICDF.ChainStorage(NDP, DataStorage@validation$data, zeta=zeta)
+  medianCurvesArranged <- matrix(NA, dim(medianCurves)[1], dim(NDP@ChainStorage@chains[["theta"]])[2])
+  for(i in 1:length(zeta)) medianCurvesArranged[,zeta[i]] <- medianCurves[,i]
+  score <- validate(curves=medianCurvesArranged, status=DataStorage@validation$status, zeta=DataStorage@validation$zeta)
   return(score)
 }
 

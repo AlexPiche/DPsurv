@@ -6,9 +6,7 @@
 #'
 #'data <- sim.data(n=100, J=10, weights)
 #'
-#'G1 <- new("DP")
-#'
-#'G1 <- init.DP(G1, DataStorage=data, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=35, thinning=50,
+#'G1 <- init.DP(DataStorage=data, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=35, thinning=50,
 #'           burnin = 5000, max_iter = 55000 )
 #'           
 #'G1 <- MCMC.DP(G1, data, 55000)
@@ -26,6 +24,7 @@ setClass("DP", representation(weights = 'matrix', phi = 'matrix', theta = 'matri
 #'
 #' @export
 init.DP <- function(DP, DataStorage, prior, L, thinning, burnin, max_iter, ...){
+  DP <- new("DP")
   DP@L <- L
   DP@prior <- array(rep(c(prior$mu, prior$n, prior$v, prior$vs2), each=(L)), c(L,1,4))
   DP@conc_param <- 1
@@ -74,11 +73,13 @@ selectXi.DP <- function(DP, DataStorage, max_lik=F){
 #' @export
 MCMC.DP <- function(DP, DataStorage, iter, ...){
   i <- 0
+  pb <- txtProgressBar(style = 3)
   while(DP@details[['iteration']] < DP@details[['max_iter']] & i < iter){
 
     DP@details[['iteration']] <- DP@details[['iteration']] + 1
     i <- i + 1
     xi <- selectXi.DP(DP, DataStorage)
+    
     DataStorage@presentation$xi <- xi[!is.na(xi)] #rep(xi, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
     DataStorage <- gibbsStep(DP=DP, DataStorage=DataStorage, xi=xi, zeta=rep(1, length(DataStorage@computation))) 
     
@@ -89,23 +90,63 @@ MCMC.DP <- function(DP, DataStorage, iter, ...){
       DP@RE <- MCMC.RE(DP@RE, DataStorage@simulation-map)
     }
     if(DP@details[["iteration"]]>DP@details[["burnin"]] & (DP@details[["iteration"]] %% DP@details[["thinning"]])==0){
-      DP@Chains <- list(theta=DP@theta, phi=DP@phi, weights=DP@weights, RE=DP@RE@computation)
-      DP@ChainStorage <- saveChain.ChainStorage(DP@Chains, (DP@details[["iteration"]]-DP@details[["burnin"]])/DP@details[["thinning"]], DP@ChainStorage)
+      setTxtProgressBar(pb, i/iter)
+      DP@Chains <- list(theta=DP@theta, phi=DP@phi, weights=DP@weights)#, RE=DP@RE@computation)
+      DP@ChainStorage <- saveChain.ChainStorage(1, unique(xi[!is.na(xi)]), DP@Chains, (DP@details[["iteration"]]-DP@details[["burnin"]])/DP@details[["thinning"]], DP@ChainStorage)
     }
   }
+  close(pb)
+  return(DP)
+}
+
+
+
+#'
+#' @export
+diagonalize.DP <- function(DP){
   DP <- posterior.DP(DP, 0.5)
+  theta_array <- array(0, dim=c(DP@L, DP@L, dim(DP@ChainStorage@chains[["theta"]])[3]))
+  phi_array <- array(0, dim=c(DP@L, DP@L, dim(DP@ChainStorage@chains[["theta"]])[3]))
+  weights_array <- array(0, dim=c(DP@L, DP@L, dim(DP@ChainStorage@chains[["theta"]])[3]))
+  for(i in 1:dim(DP@ChainStorage@chains[["theta"]])[3]){
+    theta_array[,,i] <- diag(DP@ChainStorage@chains[["theta"]][,,i])
+    phi_array[,,i] <- diag(DP@ChainStorage@chains[["phi"]][,,i])
+    weights_array[,,i] <- diag(DP@L)
+  }
+  DP@ChainStorage@chains[["theta"]] <- theta_array
+  DP@ChainStorage@chains[["phi"]] <- phi_array
+  DP@ChainStorage@chains[["weights"]] <- weights_array
   return(DP)
 }
 
 #'
 #' @export
 validate.DP <- function(DP, DataStorage){
+  DP <- diagonalize.DP(DP)
   xi <- selectXi.DP(DP, DataStorage, max_lik = T)
-  DataStorage@presentation$xi <- xi[!is.na(xi)] #rep(xi, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
+  xi <- xi[!is.na(xi)]
+  medianCurves <- getICDF.ChainStorage(DP, DataStorage@validation$data, zeta=unique(xi))
+  medianCurvesArranged <- matrix(NA, dim(medianCurves)[1], dim(DP@ChainStorage@chains[["theta"]])[2])
+  for(i in 1:length(unique(xi))) medianCurvesArranged[,xi[i]] <- medianCurves[,i]
+  DataStorage@presentation$xi <- xi #rep(xi, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
   mapping <- unique(DataStorage@presentation[, c("xi", "Sample")])
   DataStorage@validation$xi <- plyr::mapvalues(DataStorage@validation$Sample, mapping$Sample, mapping$xi, warn_missing=F)
-  #DataStorage <- update_validation_set(DataStorage)
-  score <- validate(data=DataStorage@validation$data, status=DataStorage@validation$status, zeta=DataStorage@validation$xi,
-                    theta=t(DP@theta), phi=t(DP@phi), weights=diag(DP@L))
+  score <- validate(curves=medianCurvesArranged, status=DataStorage@validation$status, zeta=DataStorage@validation$xi)
+ 
   return(score)
+}
+
+#'
+#' @export
+plotICDF.DP <- function(DP, DataStorage){
+  DP <- diagonalize.DP(DP)
+  
+  xi <- selectXi.DP(DP, DataStorage, max_lik = T)
+  xi <- xi[!is.na(xi)]
+  DataStorage@presentation$zeta <- xi
+  for(zeta in unique(DataStorage@presentation$zeta)){
+    p <- plot.ICDF(DP, zeta, DataStorage@presentation) + 
+      ggplot2::ggtitle(paste("DP", zeta))
+    print(p)
+  }
 }
