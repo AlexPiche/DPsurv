@@ -125,14 +125,17 @@ validate.DP <- function(DP, DataStorage){
   DP <- diagonalize.DP(DP)
   xi <- selectXi.DP(DP, DataStorage, max_lik = T)
   xi <- xi[!is.na(xi)]
-  medianCurves <- getICDF.ChainStorage(DP, DataStorage@validation$data, zeta=unique(xi))
-  medianCurvesArranged <- matrix(NA, dim(medianCurves)[1], dim(DP@ChainStorage@chains[["theta"]])[2])
-  for(i in 1:length(unique(xi))) medianCurvesArranged[,xi[i]] <- medianCurves[,i]
+  medianCurves <- getICDF.ChainStorage(DP, DataStorage@validation$data, zeta=unique(xi), quantiles=c(0.05,0.5,0.95))
+  medianCurvesArranged <- matrix(NA, dim(medianCurves)[2], dim(DP@ChainStorage@chains[["theta"]])[2])
+  ciCurvesArranged <- array(NA, c(2, dim(medianCurves)[2], dim(DP@ChainStorage@chains[["theta"]])[2]))
+  for(i in 1:length(unique(xi))) medianCurvesArranged[,xi[i]] <- medianCurves[2,,i]
+  for(i in 1:length(unique(xi))) ciCurvesArranged[1:2,1:27,xi[i]] <- medianCurves[c(1,3),,i]
   DataStorage@presentation$xi <- xi #rep(xi, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
   mapping <- unique(DataStorage@presentation[, c("xi", "Sample")])
   DataStorage@validation$xi <- plyr::mapvalues(DataStorage@validation$Sample, mapping$Sample, mapping$xi, warn_missing=F)
   score <- validate(curves=medianCurvesArranged, status=DataStorage@validation$status, zeta=DataStorage@validation$xi)
- 
+  mean_diff <- mean(apply(ciCurvesArranged[,,unique(xi)],2, function(vec){return(vec[2]-vec[1])}))
+  score <- c(score, mean_diff)
   return(score)
 }
 

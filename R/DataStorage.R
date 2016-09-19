@@ -4,24 +4,52 @@ setClass("DataStorage", representation(presentation='data.frame', computation='n
                                        grid='numeric', mask='numeric', censoring='numeric', episode='matrix'))#, xi='numeric'))
 
 
+#'
+#' @export
+getGrid <- function(weights, myPt){
+  a1 <- 1
+  b1 <- (1/exp(-1 * 3.75))^(1/1)
+  a2 <- 1
+  b2 <- 3.887
+  a3 <- 3
+  b3 <- (1/exp(-3 * (4.5)))^(1/3)
+  myFct <- function(x, weights, pt){
+    weights[1]*pweibull(x,a1,b1)+weights[2]*plnorm(x,b2,a2)+weights[3]*pweibull(x,a3,b3) - pt
+  }
+  sln <- uniroot(function(x) myFct(x, weights=weights, pt=myPt), interval = c(0,500))$root
+  return(sln)
+}
 
 #'
 #' @export
-train_test_split <- function(dataset, fraction=0.1, DataStorage){
-  idx <- sample.int(dim(dataset)[1], round(fraction*dim(dataset)[1]))
-  validation <- dataset[sort(idx),]
-  DataStorage@validation <- validation
-  dataset <- dataset[-sort(idx),]
+train_test_split <- function(dataset, DataStorage, fraction=0.1, weights=rep(0,9)){
+  if(fraction > 0){
+    idx <- sample.int(dim(dataset)[1], round(fraction*dim(dataset)[1]))
+    validation <- dataset[sort(idx),]
+    DataStorage@validation <- validation
+    dataset <- dataset[-sort(idx),]
+  }else{
+    J <- length(unique(DataStorage@presentation$Sample))/3
+    myQuantiles <- seq(0.15, 0.95, 0.1)
+    S1 <- mapply(getGrid, myQuantiles, MoreArgs = list(weights=c(weights)[1:3]))
+    S2 <- mapply(getGrid, myQuantiles, MoreArgs = list(weights=c(weights)[4:6]))
+    S3 <- mapply(getGrid, myQuantiles, MoreArgs = list(weights=c(weights)[7:9]))
+    DataStorage@validation <- data.frame(data=c(S1,S2,S3), 
+                                         status=rep(myQuantiles, 3), 
+                                         Sample=rep(c("S1", paste0("S", 2*J),
+                                                      paste0("S",3*J)),
+                                                    each=length(myQuantiles)))
+  }
   DataStorage@presentation <- dataset
   return(DataStorage)
 }
 
 #'
 #' @export
-init.DataStorage.simple <- function(dataset, fraction_test, ...){
+init.DataStorage.simple <- function(dataset, fraction_test, weights, ...){
   dataset <- plyr::arrange(dataset, Sample)
   DataStorage <- new("DataStorage")
-  DataStorage <- train_test_split(dataset, fraction_test, DataStorage)
+  DataStorage <- train_test_split(dataset, DataStorage, fraction_test, weights)
   X <- lapply(unique(DataStorage@presentation$Sample), function(ss) t(matrix(subset(DataStorage@presentation, Sample == ss)$status)))
   censoring <- do.call(plyr::rbind.fill.matrix, X)
   DataStorage@censoring <- c(t(censoring))
@@ -52,23 +80,23 @@ findRt <- function(x){
 #' @export
 simSurvMix <- function(N, prob, factor){
   # 15% censoring
-    toRet <- data.frame(data=rep(NA,N), status=rep(NA,N))
-    for (n in 1:N){
-      i <- runif(1)
-      if(i < prob[1]){
-        # -log(1/uniroot(function(x) pweibull(x,a1,b1)-0.85, interval=c(0,exp(150)))$root)
-        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 5.522906, beta0.ev = 3.75, dist.ev = "weibull")[,c('stop', 'status')]
-      }else if(i < sum(prob[1:2])){
-        # log(uniroot(function(x) plnorm(x,3.887,1)-0.85, interval=c(0,exp(15)))$root)
-        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 5.336191, beta0.ev = 3.887, dist.ev = "lnorm", dist.cens = "lnorm")[,c('stop', 'status')]
-      }else if(i < sum(prob[1:3])){
-        #-log(1/(uniroot(function(x) pweibull(x,a3,b3)-0.85, interval=c(0,exp(150)))$root)^3)
-        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 3, foltime = 10000, anc.cens = 3, beta0.cens = 5.091579, beta0.ev = 4.5, dist.ev = "weibull")[,c('stop', 'status')]
-      }else{
-        toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = factor*8, beta0.ev = 8, dist.ev = "weibull")[,c('stop', 'status')]
-      }
+  toRet <- data.frame(data=rep(NA,N), status=rep(NA,N))
+  for (n in 1:N){
+    i <- runif(1)
+    if(i < prob[1]){
+      # -log(1/uniroot(function(x) pweibull(x,a1,b1)-0.85, interval=c(0,exp(150)))$root)
+      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 5.522906, beta0.ev = 3.75, dist.ev = "weibull")[,c('stop', 'status')]
+    }else if(i < sum(prob[1:2])){
+      # log(uniroot(function(x) plnorm(x,3.887,1)-0.85, interval=c(0,exp(15)))$root)
+      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 5.336191, beta0.ev = 3.887, dist.ev = "lnorm", dist.cens = "lnorm")[,c('stop', 'status')]
+    }else if(i < sum(prob[1:3])){
+      #-log(1/(uniroot(function(x) pweibull(x,a3,b3)-0.85, interval=c(0,exp(150)))$root)^3)
+      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 3, foltime = 10000, anc.cens = 3, beta0.cens = 5.091579, beta0.ev = 4.5, dist.ev = "weibull")[,c('stop', 'status')]
+    }else{
+      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = factor*8, beta0.ev = 8, dist.ev = "weibull")[,c('stop', 'status')]
     }
-    toRet
+  }
+  toRet
 }
 
 #'
@@ -80,20 +108,7 @@ simRecSurvMix <- function(){
   return(-1)
 }
 
-#'
-#' @export
-getGrid <- function(weights){
-  a1 <- 1
-  b1 <- (1/exp(-1 * 3.75))^(1/1)
-  a2 <- 1
-  b2 <- factor*3.887
-  a3 <- 3
-  b3 <- (1/exp(-3 * (4.5)))^(1/3)
-  myFct <- function(x, weights, pt){
-    weights[1]*pweibull(x,a1,b1)+weights[2]*plnorm(x,b2,a2)+weights[3]*pweibull(x,a3,b3) - pt
-  }
-  rootT1 <- uniroot(function(x) myFct(x, weights=c(weights)[1:3], pt=1), interval = c(-1,5))$root
-}
+
 
 #'
 #' @export
@@ -120,7 +135,7 @@ sim.data <- function(weights, n, J, validation_prop=0.1, factor=1){
   mixture$data <- mixture$data
   
   #names(mixture)[3] <- "data"
-  data <- init.DataStorage.simple(mixture, validation_prop)
+  data <- init.DataStorage.simple(mixture, validation_prop, weights)
   data
 }
 

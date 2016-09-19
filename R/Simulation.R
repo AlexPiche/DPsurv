@@ -11,7 +11,7 @@
 #'
 #' @export
 Simulation <- function(seed,replications=35,iterations=55000,burnin=5000,thinning=50,L=35,K=20,
-                       n=100,J=10,case="1",factor=1){
+                       n=100,J=10,case="1",factor=1, val_prop=0){
   options(gsubfn.engine = "R")
   case <- toString(case)
   weights <- switch(case,
@@ -19,11 +19,11 @@ Simulation <- function(seed,replications=35,iterations=55000,burnin=5000,thinnin
                     "1"=matrix(c(0.6,0.4,0, 0.25,.75,0, 0.25,0,0.75), ncol=3),
                     "2"=matrix(c(rep(1,3), rep(0,6)), ncol=3))
   filename = paste0("results","n", n, "J", J, "case", case, "factor", factor, "seed", seed, ".csv")
-  write.table(t(c("Brier_DP", "Log_DP", "Brier_NDP", "Log_NDP", "Brier_HDP", "Log_HDP")), file = filename, sep = ",", col.names = F, row.names = F)
+  write.table(t(c("Brier_DP", "CI_DP", "Brier_NDP", "CI_NDP", "Brier_HDP", "CI_HDP")), file = filename, sep = ",", col.names = F, row.names = F)
   set.seed(seed)
 
   scores <- parallel::mclapply(1:replications, function(i){
-    data <- sim.data(n=n, J=J, weights=weights, factor=factor)
+    data <- sim.data(n=n, J=J, weights=weights, factor=factor, validation_prop = val_prop)
     print(paste("DP", i, sep=" "))
     G <- init.DP(prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=L, thinning=thinning, burnin=burnin, max_iter=iterations, DataStorage =  data)
     G1 <- MCMC.DP(G, data, iterations)

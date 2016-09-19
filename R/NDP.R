@@ -141,10 +141,13 @@ plotICDF.NDP <- function(NDP, DataStorage){
 validate.NDP <- function(NDP, DataStorage){
   DataStorage <- posteriorZeta.NDP(NDP, DataStorage)
   zeta <- unique(DataStorage@presentation$zeta)
-  medianCurves <- getICDF.ChainStorage(NDP, DataStorage@validation$data, zeta=zeta)
-  medianCurvesArranged <- matrix(NA, dim(medianCurves)[1], dim(NDP@ChainStorage@chains[["theta"]])[2])
-  for(i in 1:length(zeta)) medianCurvesArranged[,zeta[i]] <- medianCurves[,i]
+  medianCurves <- getICDF.ChainStorage(NDP, DataStorage@validation$data, zeta=zeta, c(0.05,0.5,0.95))
+  medianCurvesArranged <- matrix(NA, dim(medianCurves)[2], dim(NDP@ChainStorage@chains[["theta"]])[2])
+  for(i in 1:length(zeta)) medianCurvesArranged[,zeta[i]] <- medianCurves[2,,i]
   score <- validate(curves=medianCurvesArranged, status=DataStorage@validation$status, zeta=DataStorage@validation$zeta)
+  dims <- dim(medianCurves)
+  mean_diff <- mean(apply(matrix(medianCurves[c(1,3),,], c(2,dims[2]*dims[3])),2,function(vec){return(vec[2]-vec[1])}))
+  score <- c(score, mean_diff)
   return(score)
 }
 

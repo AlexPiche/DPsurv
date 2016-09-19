@@ -153,8 +153,10 @@ posterior.HDP <- function(HDP){
 validate.HDP <- function(HDP, DataStorage){
   HDP <- posterior.HDP(HDP)
   DataStorage <- posteriorZeta.HDP(HDP, DataStorage)
-  medianCurves <- getICDF.ChainStorage(HDP, DataStorage@validation$data, 1:HDP@J)
-  score <- validate(curves=medianCurves, status=DataStorage@validation$status, zeta=DataStorage@validation$zeta)
+  medianCurves <- getICDF.ChainStorage(HDP, DataStorage@validation$data, 1:HDP@J, c(0.05,0.5,0.95))
+  score <- validate(curves=medianCurves[2,,], status=DataStorage@validation$status, zeta=DataStorage@validation$zeta)
+  mean_diff <- mean(apply(medianCurves[c(1,3),,],2, function(vec){return(vec[2]-vec[1])}))
+  score <- c(score, mean_diff)
   return(score)
 }
 

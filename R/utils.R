@@ -70,7 +70,14 @@ stabilize <- function(mat){
 #' @export
 BrierScore <- function(probability, status){
   toRet <- (probability-status)^2
-  return(mean(toRet, na.rm=T))
+  return(mean(sqrt(toRet), na.rm=T))
+}
+
+#'
+#' @export
+meanCIWidth <- function(upper, lower){
+  toRet <- upper - lower
+  return(mean(toRet), na.rm=T)
 }
 
 #'
@@ -100,7 +107,7 @@ validate <- function(zeta, curves, status){
       probability[i] <- 1-curves[i, as.numeric(as.character(zeta[i]))]
     }
   }
-  toRet <- c(BrierScore(probability, status), LogScore(probability, status))
+  toRet <- BrierScore(probability, status)#, LogScore(probability, status))
   return(toRet)
 }
 
