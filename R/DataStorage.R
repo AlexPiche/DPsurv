@@ -30,7 +30,7 @@ train_test_split <- function(dataset, DataStorage, fraction=0.1, weights=rep(0,9
     dataset <- dataset[-sort(idx),]
   }else{
     J <- length(unique(DataStorage@presentation$Sample))/3
-    myQuantiles <- seq(0.15, 0.95, 0.1)
+    myQuantiles <- seq(0.05, 0.95, 0.1)
     S1 <- mapply(getGrid, myQuantiles, MoreArgs = list(weights=c(weights)[1:3]))
     S2 <- mapply(getGrid, myQuantiles, MoreArgs = list(weights=c(weights)[4:6]))
     S3 <- mapply(getGrid, myQuantiles, MoreArgs = list(weights=c(weights)[7:9]))
@@ -46,10 +46,14 @@ train_test_split <- function(dataset, DataStorage, fraction=0.1, weights=rep(0,9
 
 #'
 #' @export
-init.DataStorage.simple <- function(dataset, fraction_test, weights, ...){
+init.DataStorage.simple <- function(dataset, fraction_test, weights, application=F, ...){
   dataset <- plyr::arrange(dataset, Sample)
   DataStorage <- new("DataStorage")
-  DataStorage <- train_test_split(dataset, DataStorage, fraction_test, weights)
+  if(!application) {
+    DataStorage <- train_test_split(dataset, DataStorage, fraction_test, weights)
+  }else{
+    DataStorage@presentation <- dataset
+  }
   X <- lapply(unique(DataStorage@presentation$Sample), function(ss) t(matrix(subset(DataStorage@presentation, Sample == ss)$status)))
   censoring <- do.call(plyr::rbind.fill.matrix, X)
   DataStorage@censoring <- c(t(censoring))
@@ -129,7 +133,7 @@ sim.data <- function(weights, n, J, validation_prop=0.1, factor=1){
   
   mixture$TrueDistribution <- as.factor(mixture$TrueDistribution)
   mixture$xi <- rep(0, 3*N)
-  mixture$zeta <- rep(0, 3*N)
+  mixture$zeta <- rep(1:(3*J), each=n)
   mixture$Sample <- paste("S", rep(1:(3*J), each=n),sep='')
   mixture$Sample <- as.factor(mixture$Sample)
   mixture$data <- mixture$data

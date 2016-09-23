@@ -36,7 +36,7 @@ init.HDP <- function(prior, L, J, thinning, burnin, max_iter, ...){
   #HDP@conc_param[2] <- rgamma(1,0.1,0.1)
   HDP <- update.HDP(HDP)
   HDP@Chains <- list(theta=HDP@theta, phi=HDP@phi, weights=HDP@weights, pi=HDP@pi)
-  HDP@ChainStorage <- init.ChainStorage(HDP@Chains, max_iter-burnin, thinning)
+  HDP@ChainStorage <- init.ChainStorage(L, J, HDP@Chains, max_iter-burnin, thinning)
   return(HDP)
 }
 
@@ -108,56 +108,12 @@ MCMC.HDP <- function(HDP, DataStorage, iter, ...){
     HDP <- update.HDP(HDP)
     if(HDP@details[["iteration"]] > HDP@details[["burnin"]] & (HDP@details[["iteration"]] %% HDP@details[["thinning"]])==0){
       setTxtProgressBar(pb, i/iter)
-      HDP@Chains <- list(theta=HDP@theta, phi=HDP@phi, weights=HDP@weights, pi=HDP@pi)
-      HDP@ChainStorage <- saveChain.ChainStorage(1:HDP@J, 1:HDP@L, HDP@Chains, (HDP@details[["iteration"]]-HDP@details[["burnin"]])/HDP@details[["thinning"]], HDP@ChainStorage)
+      HDP@Chains <- list(theta=HDP@theta, phi=HDP@phi, weights=HDP@weights)#, pi=HDP@pi)
+      HDP@ChainStorage <- saveChain.ChainStorage(1:HDP@J, HDP@Chains, (HDP@details[["iteration"]]-HDP@details[["burnin"]])/HDP@details[["thinning"]], HDP@ChainStorage)
     }
   }
   close(pb)
   return(HDP)
-}
-
-#'
-#' @export
-posteriorZeta.HDP <- function(HDP, DataStorage){
-  J <- length(DataStorage@mask)
-  DataStorage@presentation$zeta <- rep(1:J, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
-  mapping <- unique(DataStorage@presentation[, c("zeta", "Sample")])
-  DataStorage@validation$zeta <- plyr::mapvalues(DataStorage@validation$Sample, mapping$Sample, mapping$zeta, warn_missing=F)
-  return(DataStorage)
-}
-
-#'
-#' @export
-plotICDF.HDP <- function(HDP, DataStorage){
-  HDP <- posterior.HDP(HDP)
-  DataStorage <- posteriorZeta.HDP(HDP, DataStorage)
-  for(zeta in unique(DataStorage@presentation$zeta)){
-    p <- plot.ICDF(HDP, zeta, DataStorage@presentation) +
-      ggplot2::ggtitle(paste("HDP", zeta))
-    print(p)
-  }
-}
-
-#'
-#' @export
-posterior.HDP <- function(HDP){
-  HDP@ChainStorage@chains[["theta"]] <- apply(HDP@ChainStorage@chains[["theta"]][,,1:dim(HDP@ChainStorage@chains[["theta"]])[3]], c(1,2), rep, HDP@J)
-  HDP@ChainStorage@chains[["theta"]] <- aperm(HDP@ChainStorage@chains[["theta"]], c(2,1,3))
-  HDP@ChainStorage@chains[["phi"]] <- apply(HDP@ChainStorage@chains[["phi"]][,,1:dim(HDP@ChainStorage@chains[["theta"]])[3]], c(1,2), rep, HDP@J)
-  HDP@ChainStorage@chains[["phi"]] <- aperm(HDP@ChainStorage@chains[["phi"]], c(2,1,3))
-  return(HDP)
-}
-
-#'
-#' @export
-validate.HDP <- function(HDP, DataStorage){
-  HDP <- posterior.HDP(HDP)
-  DataStorage <- posteriorZeta.HDP(HDP, DataStorage)
-  medianCurves <- getICDF.ChainStorage(HDP, DataStorage@validation$data, 1:HDP@J, c(0.05,0.5,0.95))
-  score <- validate(curves=medianCurves[2,,], status=DataStorage@validation$status, zeta=DataStorage@validation$zeta)
-  mean_diff <- mean(apply(medianCurves[c(1,3),,],2, function(vec){return(vec[2]-vec[1])}))
-  score <- c(score, mean_diff)
-  return(score)
 }
 
 #'
@@ -172,4 +128,3 @@ createNmat <- function(DataStorage, L){
   toRet <- apply(Nmat, 1, computeAtomNb, L = L)
   return(toRet)
 }
-

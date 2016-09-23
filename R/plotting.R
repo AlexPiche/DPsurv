@@ -44,8 +44,66 @@ plot.ICDF <- function(DP, myZeta, data, ...){
   
   p <- ggplot2::ggplot(curves, ggplot2::aes(x=Var2, y=value, group=Var1, colour=Var1)) + ggplot2::geom_line() +
     ggplot2::xlim(0, xlim)+ ggplot2::theme_linedraw() +
-    ggplot2::xlab("Time") + ggplot2::ylab("Survival")+ ggplot2::theme(legend.position="none") + ggplot2::theme(legend.title = ggplot2::element_blank())  
+    ggplot2::xlab("Time") + ggplot2::ylab("Survival") + ggplot2::theme(legend.title = ggplot2::element_blank())  
   p <- p + ggplot2::scale_color_manual(values=c("black","lightskyblue2", 'blue', "lightskyblue2")) + ggplot2::scale_linetype_manual(values = c("dashed", rep("solid", 3)))
-  
   return(p)
+}
+
+
+#'
+#' @export
+grid_arrange_shared_legend <- function(plots, ...) {
+  g <- ggplot2::ggplotGrob(plots[[1]] + ggplot2::theme(legend.position="right", legend.key.height = ggplot2::unit(1.5, "cm"),
+                                     legend.key.width = ggplot2::unit(0.5, "cm"),legend.title = ggplot2::element_blank()))$grobs
+  legend <- g[[which(sapply(g, function(x) x$name) == "guide-box")]]
+  lheight <- sum(legend$height)
+  gridExtra::grid.arrange(
+    do.call(gridExtra::arrangeGrob, lapply(plots, function(x)
+      x + ggplot2::theme(legend.position="none"))),
+    legend,
+    ncol = 2,
+    widths=grid::unit.c(grid::unit(5.5,"in"), grid::unit(1,"in")))
+  #heights = grid::unit.c(unit(10,"npc"), unit(1,"npc")))#unit(1, "npc") - lheight, lheight))
+}
+
+#'
+#' @export
+plotICDF.DP <- function(DP, DataStorage){
+  for(zeta in 1:DP@J){
+    p <- plot.ICDF(DP=DP, myZeta=zeta, data=DataStorage@presentation) + 
+      ggplot2::ggtitle(paste("DP", zeta))
+    print(p)
+  }
+  return(p)
+}
+
+#'
+#' @export
+plotHeatmap <- function(DP, DataStorage){
+  
+  myLevels <- unique(DataStorage@presentation$zeta)
+  zz <- getICDF.ChainStorage(DP, grid, myLevels, quantiles=c(0.05, 0.5, 0.95))
+  browser()
+  #zz <- theObject@HM[,which(!apply(theObject@HM,2,FUN = function(x){all(x == 0)}))]
+  
+  crm1 <- reshape2::melt(cor(t(zz)))
+  
+  mapping <- data.frame(from=1:length(myLevels),to=unique(theObject@T["Sample"]))#, stringsAsFactors=FALSE)
+  names(mapping) <- c("from", "to")
+  mapping$to <- lapply(mapping$to, as.character)
+  crm1$Var1 <- plyr::mapvalues(crm1$Var1, mapping$from, mapping$to)
+  crm1$Var2 <- plyr::mapvalues(crm1$Var2, mapping$from, mapping$to)
+  crm1$Var1 <- factor(crm1$Var1, levels = myLevels, ordered=T)
+  crm1$Var2 <- factor(crm1$Var2, levels = myLevels, ordered=T)
+  
+  
+  p <- ggplot2::ggplot(crm1, ggplot2::aes(Var1, Var2)) + ggplot2::geom_tile(ggplot2::aes(fill=value)) +
+    ggplot2::scale_fill_gradient(low="white", high="steelblue") +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, size = 6),
+                   axis.text.y = ggplot2::element_text(size = 6),
+                   axis.title.x = ggplot2::element_blank(),
+                   axis.title.y = ggplot2::element_blank(),
+                   legend.title = ggplot2::element_blank(),
+                   legend.key.height = ggplot2::unit(2.5, "cm"),
+                   legend.box.just = "right")
 }

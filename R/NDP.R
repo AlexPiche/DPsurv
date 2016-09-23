@@ -18,23 +18,24 @@
 #'}
 #'
 #' @export
-setClass("NDP", representation(DPs = 'list', K = 'numeric', phi = 'matrix', theta='matrix', weights='matrix', details='list', conc_param = 'numeric',
+setClass("NDP", representation(DPs = 'list', K = 'numeric', phi = 'matrix', theta='matrix', weights='matrix', details='list', conc_param = 'numeric', J = 'numeric',
                                prior = 'array', L = 'numeric', pi='matrix', Chains='list', ChainStorage='ChainStorage'))
 
 #'
 #' @export
-init.NDP <- function(prior, K, L, thinning, burnin, max_iter, ...){
+init.NDP <- function(prior, J, K, L, thinning, burnin, max_iter, ...){
   NDP <- new("NDP")
   NDP@K <- K
   NDP@L <- L
+  NDP@J <- J
   NDP@prior <- array(rep(c(prior$mu, prior$n, prior$v, prior$vs2), each=(K*L)), c(L,K,4))
   NDP@conc_param <- c(1,1)
   #NDP@conc_param[1] <- rgamma(1,5,0.1)
   #NDP@conc_param[2] <- rgamma(1,0.1,0.1)
   NDP <- update.NDP(NDP)
-  NDP@Chains <- list(theta=NDP@theta, phi=NDP@phi, weights=NDP@weights, pi=NDP@pi)
+  NDP@Chains <- list(theta=NDP@theta, phi=NDP@phi, weights=NDP@weights)#, pi=NDP@pi)
   NDP@details <- list(iteration=0, thinning=thinning, burnin=burnin, max_iter=max_iter)
-  NDP@ChainStorage <- init.ChainStorage(NDP@Chains, max_iter-burnin, thinning)
+  NDP@ChainStorage <- init.ChainStorage(L, J, NDP@Chains, max_iter-burnin, thinning)
   return(NDP)
 }
 
@@ -102,8 +103,8 @@ MCMC.NDP <- function(NDP, DataStorage, iter, ...){
     NDP <- update.NDP(NDP)
     if(NDP@details[["iteration"]]>NDP@details[["burnin"]] & (NDP@details[["iteration"]] %% NDP@details[["thinning"]])==0){
       setTxtProgressBar(pb, j/iter)
-      NDP@Chains <- list(theta=NDP@theta, phi=NDP@phi, weights=NDP@weights, pi=NDP@pi)
-      NDP@ChainStorage <- saveChain.ChainStorage(unique(zeta), 1:NDP@L, NDP@Chains, (NDP@details[["iteration"]]-NDP@details[["burnin"]])/NDP@details[["thinning"]], NDP@ChainStorage)
+      NDP@Chains <- list(theta=NDP@theta, phi=NDP@phi, weights=NDP@weights)#, pi=NDP@pi)
+      NDP@ChainStorage <- saveChain.ChainStorage(zeta, NDP@Chains, (NDP@details[["iteration"]]-NDP@details[["burnin"]])/NDP@details[["thinning"]], NDP@ChainStorage)
     }
   }
   close(pb)
@@ -113,41 +114,3 @@ MCMC.NDP <- function(NDP, DataStorage, iter, ...){
 #'
 #' @export
 MCMC.NDP_c <- compiler::cmpfun(MCMC.NDP)
-
-#'
-#' @export
-posteriorZeta.NDP <- function(NDP, DataStorage){
-  NDP <- posterior.DP(NDP, 0.5)
-  ZetaXi <- selectZetaXi.NDP(NDP, DataStorage, max_lik = T)
-  zeta <- ZetaXi[["zeta"]]
-  DataStorage@presentation$zeta <- rep(zeta, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
-  DataStorage@validation$zeta <- as.numeric(as.character(plyr::mapvalues(DataStorage@validation$Sample, DataStorage@presentation$Sample, DataStorage@presentation$zeta,  warn_missing=F)))
-  return(DataStorage)
-}
-
-#'
-#' @export
-plotICDF.NDP <- function(NDP, DataStorage){
-  DataStorage <- posteriorZeta.NDP(NDP, DataStorage)
-  for(zeta in unique(DataStorage@presentation$zeta)){
-    p <- plot.ICDF(NDP, zeta, DataStorage@presentation) + 
-      ggplot2::ggtitle(paste("NDP", zeta))
-    print(p)
-  }
-}
-
-#'
-#' @export
-validate.NDP <- function(NDP, DataStorage){
-  DataStorage <- posteriorZeta.NDP(NDP, DataStorage)
-  zeta <- unique(DataStorage@presentation$zeta)
-  medianCurves <- getICDF.ChainStorage(NDP, DataStorage@validation$data, zeta=zeta, c(0.05,0.5,0.95))
-  medianCurvesArranged <- matrix(NA, dim(medianCurves)[2], dim(NDP@ChainStorage@chains[["theta"]])[2])
-  for(i in 1:length(zeta)) medianCurvesArranged[,zeta[i]] <- medianCurves[2,,i]
-  score <- validate(curves=medianCurvesArranged, status=DataStorage@validation$status, zeta=DataStorage@validation$zeta)
-  dims <- dim(medianCurves)
-  mean_diff <- mean(apply(matrix(medianCurves[c(1,3),,], c(2,dims[2]*dims[3])),2,function(vec){return(vec[2]-vec[1])}))
-  score <- c(score, mean_diff)
-  return(score)
-}
-

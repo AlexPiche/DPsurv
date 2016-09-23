@@ -68,9 +68,9 @@ stabilize <- function(mat){
 
 #'
 #' @export
-BrierScore <- function(probability, status){
+RMSE <- function(probability, status){
   toRet <- (probability-status)^2
-  return(mean(sqrt(toRet), na.rm=T))
+  return(sqrt(mean(toRet, na.rm=T)))
 }
 
 #'
@@ -100,15 +100,29 @@ DP_sample <- function(n, size = n, replace = FALSE, prob = NULL, max_lik = F){
 
 #'
 #' @export
-validate <- function(zeta, curves, status){
+validate.DP <- function(DP, DataStorage){
+  medianCurves <- getICDF.ChainStorage(DP=DP, myGrid=DataStorage@validation$data, zeta=1:DP@J, quantiles=c(0.05,0.5,0.95))
+  #mean_diff <- mean(apply(medianCurves[c(1,3),,],2, function(vec){return(vec[2]-vec[1])}))
+  score <- validate(curves=medianCurves, 
+                    indices = rep(1:10, length(DataStorage@mask)/3),
+                    status=rep(DataStorage@validation$status, length(DataStorage@mask)/3),
+                    zeta=rep(1:length(DataStorage@mask), each=10))
+  return(score)
+}
+
+#'
+#' @export
+validate <- function(zeta, indices, curves, status){
   probability <- rep(NA, length(zeta))
+  width <- rep(NA, length(zeta))
   for(i in 1:length(zeta)){
     if(!is.na(zeta[i])){
-      probability[i] <- 1-curves[i, as.numeric(as.character(zeta[i]))]
+      probability[i] <- 1-curves[2, indices[i], as.numeric(as.character(zeta[i]))]
+      width[i] <- curves[3, indices[i], as.numeric(as.character(zeta[i]))] - curves[1, indices[i], as.numeric(as.character(zeta[i]))]
     }
   }
-  toRet <- BrierScore(probability, status)#, LogScore(probability, status))
-  return(toRet)
+  rmse <- RMSE(probability, status)#, LogScore(probability, status))
+  return(c(rmse, mean(width)))
 }
 
 #'

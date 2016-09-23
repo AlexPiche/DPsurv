@@ -4,11 +4,11 @@ setClass("ChainStorage", representation(chains='list'))
 
 #'
 #' @export
-init.ChainStorage <- function(Chains, iterations, thinning, ...){
+init.ChainStorage <- function(L, J, Chains, iterations, thinning, ...){
   ChainStorage <- new('ChainStorage')
   chains <- list()
   for(chain in names(Chains)){
-    chains[[chain]] = array(dim=c(dim(Chains[[chain]]), iterations/thinning))
+    chains[[chain]] = array(dim=c(L, J, iterations/thinning))
   }
   ChainStorage@chains <- chains
   return(ChainStorage)
@@ -16,16 +16,15 @@ init.ChainStorage <- function(Chains, iterations, thinning, ...){
 
 #'
 #' @export
-saveChain.ChainStorage <- function(zeta, xi, Chains, iteration, ChainStorage, ...){
+saveChain.ChainStorage <- function(zeta, Chains, iteration, ChainStorage, ...){
   for(chain in names(Chains)){
-    if(dim(Chains[[chain]])[2] >= length(zeta)){
-      if(chain == "weights") xi <- 1:dim(Chains[[chain]])[1]
-      if(dim(Chains[[chain]])[1]==1) xi <- 1
-
-      ChainStorage@chains[[chain]][xi, zeta, iteration] <- Chains[[chain]][xi, zeta]
-    }else{
-      #HDP case
-      ChainStorage@chains[[chain]][,,iteration] <- Chains[[chain]]
+    for(i in 1:length(zeta)){
+      if(dim(Chains[[chain]])[2] >= length(zeta)){
+        ChainStorage@chains[[chain]][, i, iteration] <- Chains[[chain]][, zeta[i]]
+      }else{
+        # HDP
+        ChainStorage@chains[[chain]][, i, iteration] <- Chains[[chain]][, 1]
+      }
     }
   }
   return(ChainStorage)
@@ -42,20 +41,26 @@ getQuantile.ChainStorage <- function(ChainStorage, quantiles, ...){
 #'
 #' @export
 getICDF.ChainStorage <- function(DP, myGrid, zeta, quantiles=0.5){
+  N <- dim(DP@ChainStorage@chains[["theta"]])[3]*length(zeta)
+  
   theta_mat <- matrix(DP@ChainStorage@chains[["theta"]][,zeta,], nrow=DP@L)
-  ind_na <- apply(theta_mat, 2, function(x) all(is.na(x)))
-  theta_mat <- theta_mat[, !ind_na]
-  theta_mat <- split(theta_mat, col(theta_mat))
+  theta_mat <- split(t(theta_mat), 1:N)
+    
   
   phi_mat <- matrix(DP@ChainStorage@chains[["phi"]][,zeta,], nrow=DP@L)
-  phi_mat <- phi_mat[, !ind_na]
-  phi_mat <- split(phi_mat, col(phi_mat))
+  phi_mat <- split(t(phi_mat), 1:N)
   
-  weights_mat <- matrix(DP@ChainStorage@chains[["weights"]][,zeta,], nrow=DP@L)
-  weights_mat <- weights_mat[, !ind_na]
-  weights_mat <- split(weights_mat, col(weights_mat))
+  
+  if(!is.null(DP@ChainStorage@chains[["weights"]])){
+    # not the DP
+    weights_mat <- matrix(DP@ChainStorage@chains[["weights"]][,zeta,], nrow=DP@L)
+  }else{
+    weights_mat <- rep(1, N)
+  }
+  weights_mat <- split(t(weights_mat), 1:N)
+  
   curves <- mapply(evaluate.ICDF, theta_mat, phi_mat, weights_mat, MoreArgs = list(grid=myGrid))
-  curvesReshape <- array(curves, c(dim(curves)[1], length(zeta), sum(!ind_na)/length(zeta)))
+  curvesReshape <- array(curves, c(dim(curves)[1], length(zeta), N/length(zeta)))
   meanCurves <- apply(curvesReshape, c(1,2), quantile, quantiles, na.rm = T)
   return(meanCurves)
 }

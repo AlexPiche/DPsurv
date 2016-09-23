@@ -18,35 +18,37 @@
 #'}
 #'
 #' @export
-setClass("DP", representation(weights = 'matrix', phi = 'matrix', theta = 'matrix', details='list', RE='RE', conc_param='numeric',
+setClass("DP", representation(weights = 'matrix', phi = 'matrix', theta = 'matrix', details='list', RE='RE', conc_param='numeric', J='numeric', K='numeric',
                               prior = 'array', L = 'numeric', Chains='list', ChainStorage='ChainStorage'))
 
 #'
 #' @export
-init.DP <- function(DP, DataStorage, prior, L, thinning, burnin, max_iter, ...){
+init.DP <- function(DP, DataStorage, prior, K, J, thinning, burnin, max_iter, ...){
   DP <- new("DP")
-  DP@L <- L
-  DP@prior <- array(rep(c(prior$mu, prior$n, prior$v, prior$vs2), each=(L)), c(L,1,4))
+  DP@L <- 1
+  DP@K <- K
+  DP@J <- J
+  DP@prior <- array(rep(c(prior$mu, prior$n, prior$v, prior$vs2), each=(K)), c(K,1,4))
   DP@conc_param <- 1
   #a_conc <- 5
   #b_conc <- 0.1
   #DP@conc_param <- rgamma(1, a_conc, b_conc)
   DP <- update.DP(DP)
   DP@RE <- init.RE(DataStorage)
-  DP@Chains <- list(theta=DP@theta, phi=DP@phi, weights=DP@weights, RE=DP@RE@computation)
+  DP@Chains <- list(theta=t(DP@theta), phi=t(DP@phi))#, weights=DP@weights, RE=DP@RE@computation)
   DP@details <- list(iteration=0, thinning=thinning, burnin=burnin, max_iter=max_iter)
-  DP@ChainStorage <- init.ChainStorage(DP@Chains, max_iter-burnin, thinning)
+  DP@ChainStorage <- init.ChainStorage(1, J, DP@Chains, max_iter-burnin, thinning)
   return(DP)
 }
 
 #'
 #' @export
 update.DP <- function(DP, ...){
-  atoms <- rNIG(DP@L, c(DP@prior[,,1]), c(DP@prior[,,2]), c(DP@prior[,,3]), c(DP@prior[,,4]))
-  DP@theta <- matrix(atoms[,1], nrow=DP@L)
-  DP@phi <- matrix(atoms[,2], nrow=DP@L)
+  atoms <- rNIG(DP@K, c(DP@prior[,,1]), c(DP@prior[,,2]), c(DP@prior[,,3]), c(DP@prior[,,4]))
+  DP@theta <- matrix(atoms[,1], nrow=DP@K)
+  DP@phi <- matrix(atoms[,2], nrow=DP@K)
   sums <- remainingSum(round(c(DP@prior[,,2])))
-  beta_0 <- rbeta(DP@L, shape1 = 1 + c(DP@prior[,,2]), shape2 = DP@conc_param + sums)
+  beta_0 <- rbeta(DP@K, shape1 = 1 + c(DP@prior[,,2]), shape2 = DP@conc_param + sums)
   DP@weights <- as.matrix(stickBreaking(beta_0), ncol=1)
   #a_conc <- 5
   #b_conc <- 0.1
@@ -59,14 +61,14 @@ update.DP <- function(DP, ...){
 selectXi.DP <- function(DP, DataStorage, max_lik=F){
     log_prob <- eStep(data=DataStorage@computation-c(t(DP@RE@computation)), censoring=DataStorage@censoring, theta=DP@theta, phi=DP@phi, w=DP@weights)
     prob <- stabilize(log_prob)
-    reshape_prob <- array(prob, c(DP@L, max(DataStorage@mask), length(DataStorage@mask)))
+    reshape_prob <- array(prob, c(DP@K, max(DataStorage@mask), length(DataStorage@mask)))
     sum_prob <- apply(reshape_prob, 3, rowSums, na.rm=T)
-    xi <- apply(sum_prob, 2, DP_sample, n=DP@L, size=1, replace=F, max_lik=max_lik)
-    if(length(xi) != length(DataStorage@computation)) {
-      xi <- rep(xi, each=max(DataStorage@mask))
+    zeta <- apply(sum_prob, 2, DP_sample, n=DP@K, size=1, replace=F, max_lik=max_lik)
+    if(length(zeta) != length(DataStorage@computation)) {
+      xi <- rep(zeta, each=max(DataStorage@mask))
       xi[is.na(DataStorage@computation)] <- NA
     }
-    return(xi)
+    return(list(zeta=zeta, xi=xi))
 }
 
 #'
@@ -78,7 +80,9 @@ MCMC.DP <- function(DP, DataStorage, iter, ...){
 
     DP@details[['iteration']] <- DP@details[['iteration']] + 1
     i <- i + 1
-    xi <- selectXi.DP(DP, DataStorage)
+    xiZeta <- selectXi.DP(DP, DataStorage)
+    xi <- xiZeta[["xi"]]
+    zeta <- xiZeta[["zeta"]]
     
     DataStorage@presentation$xi <- xi[!is.na(xi)] #rep(xi, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
     DataStorage <- gibbsStep(DP=DP, DataStorage=DataStorage, xi=xi, zeta=rep(1, length(DataStorage@computation))) 
@@ -91,65 +95,11 @@ MCMC.DP <- function(DP, DataStorage, iter, ...){
     }
     if(DP@details[["iteration"]]>DP@details[["burnin"]] & (DP@details[["iteration"]] %% DP@details[["thinning"]])==0){
       setTxtProgressBar(pb, i/iter)
-      DP@Chains <- list(theta=DP@theta, phi=DP@phi, weights=DP@weights)#, RE=DP@RE@computation)
-      DP@ChainStorage <- saveChain.ChainStorage(1, unique(xi[!is.na(xi)]), DP@Chains, (DP@details[["iteration"]]-DP@details[["burnin"]])/DP@details[["thinning"]], DP@ChainStorage)
+      DP@Chains <- list(theta=t(DP@theta), phi=t(DP@phi))#, weights=DP@weights)#, RE=DP@RE@computation)
+      DP@ChainStorage <- saveChain.ChainStorage(zeta, DP@Chains, (DP@details[["iteration"]]-DP@details[["burnin"]])/DP@details[["thinning"]], DP@ChainStorage)
     }
   }
   close(pb)
   return(DP)
 }
 
-
-
-#'
-#' @export
-diagonalize.DP <- function(DP){
-  DP <- posterior.DP(DP, 0.5)
-  theta_array <- array(0, dim=c(DP@L, DP@L, dim(DP@ChainStorage@chains[["theta"]])[3]))
-  phi_array <- array(0, dim=c(DP@L, DP@L, dim(DP@ChainStorage@chains[["theta"]])[3]))
-  weights_array <- array(0, dim=c(DP@L, DP@L, dim(DP@ChainStorage@chains[["theta"]])[3]))
-  for(i in 1:dim(DP@ChainStorage@chains[["theta"]])[3]){
-    theta_array[,,i] <- diag(DP@ChainStorage@chains[["theta"]][,,i])
-    phi_array[,,i] <- diag(DP@ChainStorage@chains[["phi"]][,,i])
-    weights_array[,,i] <- diag(DP@L)
-  }
-  DP@ChainStorage@chains[["theta"]] <- theta_array
-  DP@ChainStorage@chains[["phi"]] <- phi_array
-  DP@ChainStorage@chains[["weights"]] <- weights_array
-  return(DP)
-}
-
-#'
-#' @export
-validate.DP <- function(DP, DataStorage){
-  DP <- diagonalize.DP(DP)
-  xi <- selectXi.DP(DP, DataStorage, max_lik = T)
-  xi <- xi[!is.na(xi)]
-  medianCurves <- getICDF.ChainStorage(DP, DataStorage@validation$data, zeta=unique(xi), quantiles=c(0.05,0.5,0.95))
-  medianCurvesArranged <- matrix(NA, dim(medianCurves)[2], dim(DP@ChainStorage@chains[["theta"]])[2])
-  ciCurvesArranged <- array(NA, c(2, dim(medianCurves)[2], dim(DP@ChainStorage@chains[["theta"]])[2]))
-  for(i in 1:length(unique(xi))) medianCurvesArranged[,xi[i]] <- medianCurves[2,,i]
-  for(i in 1:length(unique(xi))) ciCurvesArranged[1:2,1:27,xi[i]] <- medianCurves[c(1,3),,i]
-  DataStorage@presentation$xi <- xi #rep(xi, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
-  mapping <- unique(DataStorage@presentation[, c("xi", "Sample")])
-  DataStorage@validation$xi <- plyr::mapvalues(DataStorage@validation$Sample, mapping$Sample, mapping$xi, warn_missing=F)
-  score <- validate(curves=medianCurvesArranged, status=DataStorage@validation$status, zeta=DataStorage@validation$xi)
-  mean_diff <- mean(apply(ciCurvesArranged[,,unique(xi)],2, function(vec){return(vec[2]-vec[1])}))
-  score <- c(score, mean_diff)
-  return(score)
-}
-
-#'
-#' @export
-plotICDF.DP <- function(DP, DataStorage){
-  DP <- diagonalize.DP(DP)
-  
-  xi <- selectXi.DP(DP, DataStorage, max_lik = T)
-  xi <- xi[!is.na(xi)]
-  DataStorage@presentation$zeta <- xi
-  for(zeta in unique(DataStorage@presentation$zeta)){
-    p <- plot.ICDF(DP, zeta, DataStorage@presentation) + 
-      ggplot2::ggtitle(paste("DP", zeta))
-    print(p)
-  }
-}
