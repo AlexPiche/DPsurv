@@ -71,7 +71,7 @@ grid_arrange_shared_legend <- function(plots, ...) {
 plotICDF.DP <- function(DP, DataStorage){
   for(zeta in 1:DP@J){
     p <- plot.ICDF(DP=DP, myZeta=zeta, data=DataStorage@presentation) + 
-      ggplot2::ggtitle(paste("DP", zeta))
+      ggplot2::ggtitle(paste(class(DP)[1], zeta))
     print(p)
   }
   return(p)

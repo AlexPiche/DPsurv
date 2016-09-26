@@ -15,7 +15,7 @@ Imports:
     stats,
     utils,
     methods,
-    MCMCpack,
+    invgamma,
     ggplot2, 
     plyr,
     survival,

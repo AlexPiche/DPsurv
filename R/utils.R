@@ -14,7 +14,8 @@ stickBreaking <- function(beta){
 #'
 #' @export
 rNIG <- function(n, mu_0, n_0, v_0, vs2_0){
-  phi <- MCMCpack::rinvgamma(n=n, shape=0.5*v_0, scale=0.5*vs2_0)
+  phi <- invgamma::rinvgamma(n=n, shape=0.5*v_0, rate=0.5*vs2_0)
+  #phi1 <- MCMCpack::rinvgamma(n=n, shape=0.5*v_0, scale=0.5*vs2_0)
   theta <- rnorm(n=n, mean=mu_0, sd=sqrt(phi/n_0))
   return(cbind(theta, phi))
 }
@@ -39,7 +40,7 @@ evaluate.ICDF <- function(theta, phi, weights, grid, ...){
                                             lower.tail = F)
   toRet <- matrix(toRet, ncol = length(grid), byrow = F)
   toRet <- colSums(toRet)
-  toRet[toRet > 1] <- 1
+  #toRet[toRet > 1] <- 1
   toRet
 }
 
@@ -103,8 +104,11 @@ DP_sample <- function(n, size = n, replace = FALSE, prob = NULL, max_lik = F){
 validate.DP <- function(DP, DataStorage){
   medianCurves <- getICDF.ChainStorage(DP=DP, myGrid=DataStorage@validation$data, zeta=1:DP@J, quantiles=c(0.05,0.5,0.95))
   #mean_diff <- mean(apply(medianCurves[c(1,3),,],2, function(vec){return(vec[2]-vec[1])}))
+  indices <- c(rep(1:10, length(DataStorage@mask)/3), 
+               rep(11:20, length(DataStorage@mask)/3), 
+               rep(21:30, length(DataStorage@mask)/3))
   score <- validate(curves=medianCurves, 
-                    indices = rep(1:10, length(DataStorage@mask)/3),
+                    indices = indices,
                     status=rep(DataStorage@validation$status, length(DataStorage@mask)/3),
                     zeta=rep(1:length(DataStorage@mask), each=10))
   return(score)
@@ -118,11 +122,11 @@ validate <- function(zeta, indices, curves, status){
   for(i in 1:length(zeta)){
     if(!is.na(zeta[i])){
       probability[i] <- 1-curves[2, indices[i], as.numeric(as.character(zeta[i]))]
-      width[i] <- curves[3, indices[i], as.numeric(as.character(zeta[i]))] - curves[1, indices[i], as.numeric(as.character(zeta[i]))]
+      width[i] <- curves[3, indices[i], as.numeric(as.character(zeta[i]))][[1]] - curves[1, indices[i], as.numeric(as.character(zeta[i]))][[1]]
     }
   }
   rmse <- RMSE(probability, status)#, LogScore(probability, status))
-  return(c(rmse, mean(width)))
+  return(c(rmse, mean(width, na.rm = T)))
 }
 
 #'

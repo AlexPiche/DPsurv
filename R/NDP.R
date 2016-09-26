@@ -24,7 +24,7 @@ setClass("NDP", representation(DPs = 'list', K = 'numeric', phi = 'matrix', thet
 #'
 #' @export
 init.NDP <- function(prior, J, K, L, thinning, burnin, max_iter, ...){
-  NDP <- new("NDP")
+  NDP <- methods::new("NDP")
   NDP@K <- K
   NDP@L <- L
   NDP@J <- J
@@ -100,12 +100,12 @@ MCMC.NDP <- function(NDP, DataStorage, iter, ...){
     DataStorage <- DPsurv::gibbsStep(DP=NDP, DataStorage=DataStorage, 
                                      xi=xi, zeta=rep(zeta, each = max(DataStorage@mask)))
     NDP@prior <- DPsurv::mStep(NDP@prior, DataStorage@simulation, xi=xi, zeta=rep(zeta, each = max(DataStorage@mask)))
-    NDP <- update.NDP(NDP)
     if(NDP@details[["iteration"]]>NDP@details[["burnin"]] & (NDP@details[["iteration"]] %% NDP@details[["thinning"]])==0){
       setTxtProgressBar(pb, j/iter)
       NDP@Chains <- list(theta=NDP@theta, phi=NDP@phi, weights=NDP@weights)#, pi=NDP@pi)
-      NDP@ChainStorage <- saveChain.ChainStorage(zeta, NDP@Chains, (NDP@details[["iteration"]]-NDP@details[["burnin"]])/NDP@details[["thinning"]], NDP@ChainStorage)
+      NDP@ChainStorage <- saveChain.ChainStorage(zeta=zeta, Chains=NDP@Chains, iteration=(NDP@details[["iteration"]]-NDP@details[["burnin"]])/NDP@details[["thinning"]], ChainStorage=NDP@ChainStorage)
     }
+    NDP <- update.NDP(NDP)
   }
   close(pb)
   return(NDP)

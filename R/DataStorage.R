@@ -48,7 +48,7 @@ train_test_split <- function(dataset, DataStorage, fraction=0.1, weights=rep(0,9
 #' @export
 init.DataStorage.simple <- function(dataset, fraction_test, weights, application=F, ...){
   dataset <- plyr::arrange(dataset, Sample)
-  DataStorage <- new("DataStorage")
+  DataStorage <- methods::new("DataStorage")
   if(!application) {
     DataStorage <- train_test_split(dataset, DataStorage, fraction_test, weights)
   }else{

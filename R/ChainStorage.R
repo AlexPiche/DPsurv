@@ -5,7 +5,7 @@ setClass("ChainStorage", representation(chains='list'))
 #'
 #' @export
 init.ChainStorage <- function(L, J, Chains, iterations, thinning, ...){
-  ChainStorage <- new('ChainStorage')
+  ChainStorage <- methods::new('ChainStorage')
   chains <- list()
   for(chain in names(Chains)){
     chains[[chain]] = array(dim=c(L, J, iterations/thinning))
@@ -46,10 +46,8 @@ getICDF.ChainStorage <- function(DP, myGrid, zeta, quantiles=0.5){
   theta_mat <- matrix(DP@ChainStorage@chains[["theta"]][,zeta,], nrow=DP@L)
   theta_mat <- split(t(theta_mat), 1:N)
     
-  
   phi_mat <- matrix(DP@ChainStorage@chains[["phi"]][,zeta,], nrow=DP@L)
   phi_mat <- split(t(phi_mat), 1:N)
-  
   
   if(!is.null(DP@ChainStorage@chains[["weights"]])){
     # not the DP
@@ -70,11 +68,8 @@ getICDF.ChainStorage <- function(DP, myGrid, zeta, quantiles=0.5){
 posterior.DP <- function(DP, quantiles){
   csMedian <- getQuantile.ChainStorage(DP@ChainStorage, quantiles)
   DP@theta <- csMedian[["theta"]]
-  DP@theta[is.na(DP@theta)] <- 0
   DP@phi <- csMedian[["phi"]]
-  DP@phi[is.na(DP@phi)] <- 100
   DP@weights <- apply(DP@ChainStorage@chains[["weights"]], c(1,2), median, na.rm=T)#csMedian[["weights"]]
-  DP@weights[is.na(DP@weights)] <- rbeta(length(is.na(DP@weights)),1,1)
   DP@weights <- apply(DP@weights, 2, normalizeVec)
   #DP@weights <- csMedian[["weights"]]
   #DP@RE@computation <- csMedian[["RE"]]

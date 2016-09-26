@@ -24,7 +24,7 @@ setClass("DP", representation(weights = 'matrix', phi = 'matrix', theta = 'matri
 #'
 #' @export
 init.DP <- function(DP, DataStorage, prior, K, J, thinning, burnin, max_iter, ...){
-  DP <- new("DP")
+  DP <- methods::new("DP")
   DP@L <- 1
   DP@K <- K
   DP@J <- J
@@ -88,7 +88,6 @@ MCMC.DP <- function(DP, DataStorage, iter, ...){
     DataStorage <- gibbsStep(DP=DP, DataStorage=DataStorage, xi=xi, zeta=rep(1, length(DataStorage@computation))) 
     
     DP@prior <- mStep(DP@prior, DataStorage@simulation-c(t(DP@RE@computation)), xi=xi, zeta=rep(1, length(DataStorage@computation)))
-    DP <- update.DP(DP)
     if(F){
       map <- mappingMu(c(xi),rep(1,length(xi)), DP@theta)
       DP@RE <- MCMC.RE(DP@RE, DataStorage@simulation-map)
@@ -98,6 +97,7 @@ MCMC.DP <- function(DP, DataStorage, iter, ...){
       DP@Chains <- list(theta=t(DP@theta), phi=t(DP@phi))#, weights=DP@weights)#, RE=DP@RE@computation)
       DP@ChainStorage <- saveChain.ChainStorage(zeta, DP@Chains, (DP@details[["iteration"]]-DP@details[["burnin"]])/DP@details[["thinning"]], DP@ChainStorage)
     }
+    DP <- update.DP(DP)
   }
   close(pb)
   return(DP)
