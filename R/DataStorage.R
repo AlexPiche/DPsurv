@@ -20,6 +20,17 @@ getGrid <- function(weights, myPt){
   return(sln)
 }
 
+getICDF.DataStorage <- function(x, weights){
+  a1 <- 1
+  b1 <- (1/exp(-1 * 3.75))^(1/1)
+  a2 <- 1
+  b2 <- 3.887
+  a3 <- 3
+  b3 <- (1/exp(-3 * (4.5)))^(1/3)
+  toRet <- weights[1]*pweibull(x,a1,b1)+weights[2]*plnorm(x,b2,a2)+weights[3]*pweibull(x,a3,b3)
+  return(1-toRet)
+}
+
 #'
 #' @export
 train_test_split <- function(dataset, DataStorage, fraction=0.1, weights=rep(0,9)){
@@ -36,9 +47,7 @@ train_test_split <- function(dataset, DataStorage, fraction=0.1, weights=rep(0,9
     S3 <- mapply(getGrid, myQuantiles, MoreArgs = list(weights=c(weights)[7:9]))
     DataStorage@validation <- data.frame(data=c(S1,S2,S3), 
                                          status=rep(myQuantiles, 3), 
-                                         Sample=rep(c("S1", paste0("S", 2*J),
-                                                      paste0("S",3*J)),
-                                                    each=length(myQuantiles)))
+                                         Sample=rep(1:3, each=length(myQuantiles)))
   }
   DataStorage@presentation <- dataset
   return(DataStorage)
@@ -48,6 +57,7 @@ train_test_split <- function(dataset, DataStorage, fraction=0.1, weights=rep(0,9
 #' @export
 init.DataStorage.simple <- function(dataset, fraction_test, weights, application=F, ...){
   dataset <- plyr::arrange(dataset, Sample)
+  browser()
   DataStorage <- methods::new("DataStorage")
   if(!application) {
     DataStorage <- train_test_split(dataset, DataStorage, fraction_test, weights)
@@ -77,7 +87,7 @@ init.DataStorage.recurrent <- function(dataset, ...){
 
 findRt <- function(x){
   xx <- survsim::simple.surv.sim(1000, anc.ev = 3, foltime = 10000, anc.cens = 3, beta0.cens = x, beta0.ev = 4.5, dist.ev = "weibull")[,c('stop', 'status')]
-  return(sum(xx$status)/1000-0.85)
+  return(sum(xx$status)/1000-0.5)
 }
 
 #'
@@ -88,14 +98,14 @@ simSurvMix <- function(N, prob, factor){
   for (n in 1:N){
     i <- runif(1)
     if(i < prob[1]){
-      # -log(1/uniroot(function(x) pweibull(x,a1,b1)-0.85, interval=c(0,exp(150)))$root)
-      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 5.522906, beta0.ev = 3.75, dist.ev = "weibull")[,c('stop', 'status')]
+      # -log(1/uniroot(function(x) pweibull(x,,b1)-0.85, interval=c(0,exp(150)))$root)
+      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 3.75, beta0.ev = 3.75, dist.ev = "weibull")[,c('stop', 'status')]
     }else if(i < sum(prob[1:2])){
       # log(uniroot(function(x) plnorm(x,3.887,1)-0.85, interval=c(0,exp(15)))$root)
-      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 5.336191, beta0.ev = 3.887, dist.ev = "lnorm", dist.cens = "lnorm")[,c('stop', 'status')]
+      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 3.887, beta0.ev = 3.887, dist.ev = "lnorm", dist.cens = "lnorm")[,c('stop', 'status')]
     }else if(i < sum(prob[1:3])){
-      #-log(1/(uniroot(function(x) pweibull(x,a3,b3)-0.85, interval=c(0,exp(150)))$root)^3)
-      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 3, foltime = 10000, anc.cens = 3, beta0.cens = 5.091579, beta0.ev = 4.5, dist.ev = "weibull")[,c('stop', 'status')]
+      #-log(1/(uniroot(function(x) pweibull(x,a3,b3)-0.85, interval=c(0,exp(150)))$root)^3) 
+      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 3, foltime = 10000, anc.cens = 3, beta0.cens = 4.5, beta0.ev = 4.5, dist.ev = "weibull")[,c('stop', 'status')]
     }else{
       toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = factor*8, beta0.ev = 8, dist.ev = "weibull")[,c('stop', 'status')]
     }
@@ -134,8 +144,7 @@ sim.data <- function(weights, n, J, validation_prop=0.1, factor=1){
   mixture$TrueDistribution <- as.factor(mixture$TrueDistribution)
   mixture$xi <- rep(0, 3*N)
   mixture$zeta <- rep(1:(3*J), each=n)
-  mixture$Sample <- paste("S", rep(1:(3*J), each=n),sep='')
-  mixture$Sample <- as.factor(mixture$Sample)
+  mixture$Sample <- rep(1:(3*J), each=n)
   mixture$data <- mixture$data
   
   #names(mixture)[3] <- "data"

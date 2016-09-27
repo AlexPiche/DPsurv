@@ -108,7 +108,7 @@ MCMC.HDP <- function(HDP, DataStorage, iter, ...){
     if(HDP@details[["iteration"]] > HDP@details[["burnin"]] & (HDP@details[["iteration"]] %% HDP@details[["thinning"]])==0){
       setTxtProgressBar(pb, i/iter)
       HDP@Chains <- list(theta=HDP@theta, phi=HDP@phi, weights=HDP@weights)#, pi=HDP@pi)
-      HDP@ChainStorage <- saveChain.ChainStorage(1:HDP@J, HDP@Chains, (HDP@details[["iteration"]]-HDP@details[["burnin"]])/HDP@details[["thinning"]], HDP@ChainStorage)
+      HDP@ChainStorage <- saveChain.ChainStorage(zeta=1:HDP@J, Chains=HDP@Chains, iteration = (HDP@details[["iteration"]]-HDP@details[["burnin"]])/HDP@details[["thinning"]], ChainStorage=HDP@ChainStorage)
     }
     HDP <- update.HDP(HDP)
   }

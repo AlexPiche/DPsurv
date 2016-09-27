@@ -95,7 +95,7 @@ MCMC.DP <- function(DP, DataStorage, iter, ...){
     if(DP@details[["iteration"]]>DP@details[["burnin"]] & (DP@details[["iteration"]] %% DP@details[["thinning"]])==0){
       setTxtProgressBar(pb, i/iter)
       DP@Chains <- list(theta=t(DP@theta), phi=t(DP@phi))#, weights=DP@weights)#, RE=DP@RE@computation)
-      DP@ChainStorage <- saveChain.ChainStorage(zeta, DP@Chains, (DP@details[["iteration"]]-DP@details[["burnin"]])/DP@details[["thinning"]], DP@ChainStorage)
+      DP@ChainStorage <- saveChain.ChainStorage(zeta=zeta, Chains=DP@Chains, iteration=(DP@details[["iteration"]]-DP@details[["burnin"]])/DP@details[["thinning"]], ChainStorage=DP@ChainStorage)
     }
     DP <- update.DP(DP)
   }

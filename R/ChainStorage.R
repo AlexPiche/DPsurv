@@ -19,7 +19,7 @@ init.ChainStorage <- function(L, J, Chains, iterations, thinning, ...){
 saveChain.ChainStorage <- function(zeta, Chains, iteration, ChainStorage, ...){
   for(chain in names(Chains)){
     for(i in 1:length(zeta)){
-      if(dim(Chains[[chain]])[2] >= length(zeta)){
+      if(dim(Chains[[chain]])[2] > 1){
         ChainStorage@chains[[chain]][, i, iteration] <- Chains[[chain]][, zeta[i]]
       }else{
         # HDP
@@ -31,6 +31,7 @@ saveChain.ChainStorage <- function(zeta, Chains, iteration, ChainStorage, ...){
 }
 
 
+
 #'
 #' @export
 getQuantile.ChainStorage <- function(ChainStorage, quantiles, ...){
@@ -40,18 +41,19 @@ getQuantile.ChainStorage <- function(ChainStorage, quantiles, ...){
 
 #'
 #' @export
-getICDF.ChainStorage <- function(DP, myGrid, zeta, quantiles=0.5){
+getICDF.ChainStorage <- function(DP, myGrid, zeta, quantiles=0.5, i=0){
+  if(i==0) i <- 1:dim(DP@ChainStorage@chains[["theta"]])[3]
   N <- dim(DP@ChainStorage@chains[["theta"]])[3]*length(zeta)
   
-  theta_mat <- matrix(DP@ChainStorage@chains[["theta"]][,zeta,], nrow=DP@L)
+  theta_mat <- matrix(DP@ChainStorage@chains[["theta"]][,zeta,i], nrow=DP@L)
   theta_mat <- split(t(theta_mat), 1:N)
     
-  phi_mat <- matrix(DP@ChainStorage@chains[["phi"]][,zeta,], nrow=DP@L)
+  phi_mat <- matrix(DP@ChainStorage@chains[["phi"]][,zeta,i], nrow=DP@L)
   phi_mat <- split(t(phi_mat), 1:N)
   
   if(!is.null(DP@ChainStorage@chains[["weights"]])){
     # not the DP
-    weights_mat <- matrix(DP@ChainStorage@chains[["weights"]][,zeta,], nrow=DP@L)
+    weights_mat <- matrix(DP@ChainStorage@chains[["weights"]][,zeta,i], nrow=DP@L)
   }else{
     weights_mat <- rep(1, N)
   }

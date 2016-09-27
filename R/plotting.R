@@ -21,6 +21,7 @@ plot.PDF <- function(theta, phi, weights, L, grid, emp_data, xlim, ...){
 #' @export
 plot.ICDF <- function(DP, myZeta, data, ...){
   data <- subset(data, zeta == myZeta)
+  if(sum(data$status) == 0) return(-1) # cannot be graph
   temp <- data[,c("status", "data", "Sample")]
   
   xlim <- 1.25*max(temp$data)
@@ -46,8 +47,12 @@ plot.ICDF <- function(DP, myZeta, data, ...){
     ggplot2::xlim(0, xlim)+ ggplot2::theme_linedraw() +
     ggplot2::xlab("Time") + ggplot2::ylab("Survival") + ggplot2::theme(legend.title = ggplot2::element_blank())  
   p <- p + ggplot2::scale_color_manual(values=c("black","lightskyblue2", 'blue', "lightskyblue2")) + ggplot2::scale_linetype_manual(values = c("dashed", rep("solid", 3)))
+  p <- p + ggplot2::ggtitle(paste(class(DP)[1], myZeta))
+  print(p)
   return(p)
 }
+
+
 
 
 #'
@@ -68,13 +73,10 @@ grid_arrange_shared_legend <- function(plots, ...) {
 
 #'
 #' @export
-plotICDF.DP <- function(DP, DataStorage){
-  for(zeta in 1:DP@J){
-    p <- plot.ICDF(DP=DP, myZeta=zeta, data=DataStorage@presentation) + 
-      ggplot2::ggtitle(paste(class(DP)[1], zeta))
-    print(p)
+plotICDF.DP <- function(DP, DataStorage, zetas=1:DP@J){
+  for(zeta in zetas){
+    plot.ICDF(DP=DP, myZeta=zeta, data=DataStorage@presentation) 
   }
-  return(p)
 }
 
 #'

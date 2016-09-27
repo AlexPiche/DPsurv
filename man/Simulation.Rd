@@ -4,7 +4,7 @@
 \alias{Simulation}
 \title{Simulation}
 \usage{
-Simulation(seed, replications = 35, iterations = 55000, burnin = 5000,
+Simulation(seed, replications = 32, iterations = 55000, burnin = 5000,
   thinning = 50, L = 35, K = 20, n = 100, J = 10, case = "1",
   factor = 1, val_prop = 0, nb_cores = 4)
 }
