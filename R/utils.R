@@ -15,6 +15,7 @@ stickBreaking <- function(beta){
 #' @export
 rNIG <- function(n, mu_0, n_0, v_0, vs2_0){
   phi <- invgamma::rinvgamma(n=n, shape=0.5*v_0, rate=0.5*vs2_0)
+  #phi <- invgamma::rinvgamma(n=n, shape=0.5*v_0, rate=0.5*vs2_0)
   #phi1 <- MCMCpack::rinvgamma(n=n, shape=0.5*v_0, scale=0.5*vs2_0)
   theta <- rnorm(n=n, mean=mu_0, sd=sqrt(phi/n_0))
   return(cbind(theta, phi))
@@ -101,8 +102,20 @@ DP_sample <- function(n, size = n, replace = FALSE, prob = NULL, max_lik = F){
 
 #'
 #' @export
+validate.App <- function(DP, DataStorage){
+  MCIW <- rep(NA, length(unique(DataStorage@presentation$zeta)))
+  for(i in as.numeric(unique(DataStorage@presentation$zeta))){
+    grid <- subset(DataStorage@presentation, zeta==i)$data
+    medianCurves <- getICDF.ChainStorage(DP=DP, myGrid=grid, zeta=i, quantiles=c(0.05,0.95))
+    MCIW[i] <- mean(abs(medianCurves[2,,1]-medianCurves[1,,1]))
+  }
+  mean(MCIW)
+}
+
+#'
+#' @export
 validate.DP <- function(DP, DataStorage){
-  medianCurves <- getICDF.ChainStorage(DP=DP, myGrid=DataStorage@validation$data, zeta=1:DP@J, quantiles=c(0.05,0.5,0.95))
+  medianCurves <- getICDF.ChainStorage(DP=DP, myGrid=DataStorage@validation$data, zeta=1:DP@J, quantiles=c(0.025,0.5,0.975))
   #mean_diff <- mean(apply(medianCurves[c(1,3),,],2, function(vec){return(vec[2]-vec[1])}))
   indices <- c(rep(1:10, length(DataStorage@mask)/3), 
                rep(11:20, length(DataStorage@mask)/3), 

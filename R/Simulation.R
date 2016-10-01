@@ -11,7 +11,7 @@
 #'
 #' @export
 Simulation <- function(seed,replications=32,iterations=55000,burnin=5000,thinning=50,L=35,K=20,
-                       n=100,J=10,case="1",factor=1, val_prop=0, nb_cores=4){
+                       n=100,J=10,case="1",factor=1, Prior = list(mu=0, n=0.01, v=2*3, vs2=2*1), val_prop=0, nb_cores=4){
   options(gsubfn.engine = "R")
   case <- toString(case)
   weights <- switch(case,
@@ -22,21 +22,24 @@ Simulation <- function(seed,replications=32,iterations=55000,burnin=5000,thinnin
   write.table(t(c("Brier_DP", "CI_DP", "Brier_NDP", "CI_NDP", "Brier_HDP", "CI_HDP")), file = filename, sep = ",", col.names = F, row.names = F)
   set.seed(seed)
 
+  
+  
   scores <- parallel::mclapply(1:replications, function(i){
     data <- sim.data(n=n, J=J, weights=weights, factor=factor, validation_prop = val_prop)
+    Prior[1] <- log(median(data@presentation$data))
     print(paste("DP", i, sep=" "))
-    G <- init.DP(prior=list(mu=0, n=0.1, v=3, vs2=1*3), K=L, J=3*J, thinning=thinning, burnin=burnin, max_iter=iterations, DataStorage =  data)
+    G <- init.DP(prior=Prior, K=L, J=3*J, thinning=thinning, burnin=burnin, max_iter=iterations, DataStorage =  data)
     G <- MCMC.DP(G, data, iterations)
     score_DP <- validate.DP(G, data)
     
     print(paste("NDP", i, sep=" "))
-    G <- init.NDP(prior=list(mu=0, n=0.1, v=3, vs2=1*3), K=K, L=L, J=3*J, thinning=thinning, burnin=burnin, max_iter=iterations)
+    G <- init.NDP(prior=Prior, K=K, L=L, J=3*J, thinning=thinning, burnin=burnin, max_iter=iterations)
     G <- MCMC.NDP(G, data, iterations)
     
     score_NDP <- validate.DP(G, data)
     
     print(paste("HDP", i, sep=" "))
-    G <- init.HDP(prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=L, 
+    G <- init.HDP(prior=Prior, L=L, 
                    J=3*J, thinning=thinning, burnin=burnin, max_iter=iterations)
     G <- MCMC.HDP(G, data, iterations)
     score_HDP <- validate.DP(G, data)
@@ -67,37 +70,35 @@ Applications <- function(seed,iterations=55000,burnin=5000,thinning=50,L=35,K=20
   
   set.seed(seed)
   
-  for(dataset in myData){
-    data <- init.DataStorage.simple(get(dataset), 0, weights=0, application=T)
-    
-    print(paste("DP", dataset, sep=" "))
-    #G <- new("DP")
+  #for(dataset in myData){
+  data <- init.DataStorage.simple(performArt, 0, weights=0, application=T)
+  Prior = c(median(log(data@presentation$data)), 0.01, 3*2, 1*2)
+  parallel::mclapply(1:3 ,function(i){
     J <- length(unique(data@presentation$zeta))
-    #G <- init.DP(G, prior=list(mu=0, n=0.1, v=3, vs2=1*3), K=L, J=J, thinning=thinning, burnin=burnin, max_iter=iterations, DataStorage =  data)
-    #G1 <- MCMC.DP(G, data, iterations)
-    #save(G1, file="G1pA.Rdata")
-    #score_DP <- validate.DP(G1, data)[2]
-    #G1 <- NA
-    
-    #print(paste("NDP", dataset, sep=" "))
-    #G <- new("NDP")
-    #G <- init.NDP(G, prior=list(mu=0, n=0.1, v=3, vs2=1*3), K=K, L=L, J=J, thinning=thinning, burnin=burnin, max_iter=iterations)
-    #G2 <- MCMC.NDP(G, data, iterations)
-    #save(G2, file="G2pA.Rdata")
-    #score_NDP <- validate.DP(G2, data)[2]
-    #G2 <- NA
-    
-    print(paste("HDP", dataset, sep=" "))
-    G <- new("HDP")
-    G <- init.HDP(G, prior=list(mu=0, n=0.1, v=3, vs2=1*3), L=L, 
-                   J=J, thinning=thinning, burnin=burnin, max_iter=iterations)
-    G3 <- MCMC.HDP(G, data, iterations)
-    save(G3, file="G3pA.Rdata")
-    #score_HDP <- validate.DP(G3, data)[2]
-    G3 <- NA
-    
+    if(i == 1){
+      print("DP")
+      G <- new("DP")
+      G <- init.DP(G, prior=Prior, K=L, J=J, thinning=thinning, burnin=burnin, max_iter=iterations, DataStorage =  data)
+      G1 <- MCMC.DP(G, data, iterations)
+      save(G1, file="G1pA.Rdata")
+      #score_DP <- validate.DP(G1, data)[2]
+    }else if (i == 2){
+      print("NDP")
+      G <- new("NDP")
+      G <- init.NDP(G, prior=Prior, K=K, L=L, J=J, thinning=thinning, burnin=burnin, max_iter=iterations)
+      G2 <- MCMC.NDP(G, data, iterations)
+      save(G2, file="G2pA.Rdata")
+    } else {
+      print("HDP")
+      G <- new("HDP")
+      G <- init.HDP(G, prior=Prior, L=L, 
+                    J=J, thinning=thinning, burnin=burnin, max_iter=iterations)
+      G3 <- MCMC.HDP(G, data, iterations)
+      save(G3, file="G3pA.Rdata")
+    }
     #toRet <- c(dataset, score_DP, score_NDP, score_HDP, T)
     #write.table(t(toRet), file = filename, sep = ",", col.names = F, row.names=F, append=TRUE)
     #return(toRet)
-  }
+  }, mc.cores = 3
+  )
 }

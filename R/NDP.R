@@ -19,7 +19,7 @@
 #'
 #' @export
 setClass("NDP", representation(DPs = 'list', K = 'numeric', phi = 'matrix', theta='matrix', weights='matrix', details='list', conc_param = 'numeric', J = 'numeric',
-                               prior = 'array', L = 'numeric', pi='matrix', Chains='list', ChainStorage='ChainStorage'))
+                               prior = 'numeric', posterior = 'array', L = 'numeric', pi='matrix', Chains='list', ChainStorage='ChainStorage'))
 
 #'
 #' @export
@@ -28,36 +28,36 @@ init.NDP <- function(prior, J, K, L, thinning, burnin, max_iter, ...){
   NDP@K <- K
   NDP@L <- L
   NDP@J <- J
-  NDP@prior <- array(rep(c(prior$mu, prior$n, prior$v, prior$vs2), each=(K*L)), c(L,K,4))
+  NDP@prior <- prior
+  NDP@posterior <- array(rep(c(prior[1], prior[2], prior[3], prior[4]), each=(K*L)), c(L,K,4))
   NDP@conc_param <- c(1,1)
-  #NDP@conc_param[1] <- rgamma(1,5,0.1)
-  #NDP@conc_param[2] <- rgamma(1,0.1,0.1)
   NDP <- update.NDP(NDP)
-  NDP@Chains <- list(theta=NDP@theta, phi=NDP@phi, weights=NDP@weights)#, pi=NDP@pi)
+  myProb <- matrix(NA, nrow=K, ncol=J)
+  myParams <- matrix(NA, nrow=L, ncol=J)
+  NDP@Chains <- list(theta=myParams, phi=myParams, weights=myParams, prob=myProb)
   NDP@details <- list(iteration=0, thinning=thinning, burnin=burnin, max_iter=max_iter)
-  NDP@ChainStorage <- init.ChainStorage(L, J, NDP@Chains, max_iter-burnin, thinning)
+  NDP@ChainStorage <- init.ChainStorage(NDP@Chains, max_iter-burnin, thinning)
   return(NDP)
 }
 
 #'
 #' @export
 update.NDP <- function(NDP, ...){
-  atoms <- rNIG(NDP@L*NDP@K, c(NDP@prior[,,1]), c(NDP@prior[,,2]), c(NDP@prior[,,3]), c(NDP@prior[,,4]))
+  atoms <- rNIG(NDP@L*NDP@K, c(NDP@posterior[,,1]), c(NDP@posterior[,,2]), c(NDP@posterior[,,3]), c(NDP@posterior[,,4]))
   NDP@theta <- matrix(atoms[,1], nrow=NDP@L)
   NDP@phi <- matrix(atoms[,2], nrow=NDP@L)
-  sums <- remainingSum(colSums(round(NDP@prior[,,2])))
-  u_k <- rbeta(sums, 1 + colSums(round(NDP@prior[,,2])), NDP@conc_param[1] + sums)
+  sums <- remainingSum(colSums(round(NDP@posterior[,,2])))
+  u_k <- rbeta(sums, 1 + colSums(round(NDP@posterior[,,2])), NDP@conc_param[1] + sums)
   NDP@pi <- matrix(stickBreaking(u_k), nrow=1)
-  #NDP@pi <- matrix(c(1, rep(0, length(NDP@pi)-1)))
-  sums <- apply(round(NDP@prior[,,2]), 2, remainingSum)
-  v_lk <- matrix(rbeta(NDP@L*NDP@K, shape1 = 1 + c(round(NDP@prior[,,2])), shape2 = NDP@conc_param[2] + c(sums)),nrow=NDP@L)
+  sums <- apply(round(NDP@posterior[,,2]), 2, remainingSum)
+  v_lk <- matrix(rbeta(NDP@L*NDP@K, shape1 = 1 + c(round(NDP@posterior[,,2])), shape2 = NDP@conc_param[2] + c(sums)),nrow=NDP@L)
   NDP@weights <- apply(v_lk, 2, stickBreaking)
   a_conc1 <- 5
   b_conc1 <- 0.1
-  a_conc2 <- 0.1
+  a_conc2 <- 5
   b_conc2 <- 0.1
-  #NDP@conc_param[1] <- rgamma(1, a_conc1 + NDP@K - 1, b_conc1 - sum(log(1-u_k[1:NDP@K-1])))
-  #NDP@conc_param[2] <- rgamma(1, a_conc2 + NDP@K*(NDP@L-1) - 1, b_conc2 - sum(log(1-v_lk[-seq(NDP@L, NDP@K*NDP@L, NDP@L)])))
+  NDP@conc_param[1] <- rgamma(1, a_conc1 + NDP@K - 1, b_conc1 - sum(log(1-u_k[1:NDP@K-1])))
+  NDP@conc_param[2] <- rgamma(1, a_conc2 + NDP@K*(NDP@L-1) - 1, b_conc2 - sum(log(1-v_lk[-seq(NDP@L, NDP@K*NDP@L, NDP@L)])))
   
   return(NDP)
 }
@@ -76,7 +76,7 @@ selectZetaXi.NDP <- function(NDP, DataStorage, max_lik=F, ...){
   atom_log_prob <- matrix(atom_log_prob, nrow=NDP@L)
   atom_prob <- stabilize(atom_log_prob)
   xi <- apply(atom_prob, 2, DP_sample, n=NDP@L, size=1, replace=F, max_lik=max_lik)
-  return(list(zeta=zeta, xi=xi))
+  return(list(zeta=zeta, xi=xi, prob=weighted_DP_prob))
 }
 
 #'
@@ -99,10 +99,10 @@ MCMC.NDP <- function(NDP, DataStorage, iter, ...){
     DataStorage@presentation$zeta <- rep(zeta, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
     DataStorage <- DPsurv::gibbsStep(DP=NDP, DataStorage=DataStorage, 
                                      xi=xi, zeta=rep(zeta, each = max(DataStorage@mask)))
-    NDP@prior <- DPsurv::mStep(NDP@prior, DataStorage@simulation, xi=xi, zeta=rep(zeta, each = max(DataStorage@mask)))
+    NDP@posterior <- DPsurv::mStep(NDP@prior, NDP@posterior, DataStorage@simulation, xi=xi, zeta=rep(zeta, each = max(DataStorage@mask)))
     if(NDP@details[["iteration"]]>NDP@details[["burnin"]] & (NDP@details[["iteration"]] %% NDP@details[["thinning"]])==0){
       setTxtProgressBar(pb, j/iter)
-      NDP@Chains <- list(theta=NDP@theta, phi=NDP@phi, weights=NDP@weights)#, pi=NDP@pi)
+      NDP@Chains <- list(theta=NDP@theta, phi=NDP@phi, weights=NDP@weights, prob=t(ZetaXi[["prob"]]))
       NDP@ChainStorage <- saveChain.ChainStorage(zeta=zeta, Chains=NDP@Chains, iteration=(NDP@details[["iteration"]]-NDP@details[["burnin"]])/NDP@details[["thinning"]], ChainStorage=NDP@ChainStorage)
     }
     NDP <- update.NDP(NDP)

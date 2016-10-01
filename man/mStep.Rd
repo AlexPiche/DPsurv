@@ -4,7 +4,7 @@
 \alias{mStep}
 \title{mStep}
 \usage{
-mStep(prior, data, xi, zeta)
+mStep(prior, posterior, data, xi, zeta)
 }
 \description{
 Return the parameters' posterior.

@@ -20,7 +20,7 @@
 #'
 #' @export
 setClass("HDP", representation(phi = 'matrix', theta='matrix', weights='matrix', Nmat='matrix', details='list', conc_param = 'numeric',
-                              prior = 'array', L = 'numeric', J = 'numeric', Chains='list', pi='matrix', ChainStorage='ChainStorage'))
+                              prior = 'numeric', posterior = 'array', L = 'numeric', J = 'numeric', Chains='list', pi='matrix', ChainStorage='ChainStorage'))
 
 #'
 #' @export
@@ -28,15 +28,17 @@ init.HDP <- function(prior, L, J, thinning, burnin, max_iter, ...){
   HDP <- methods::new("HDP")
   HDP@L <- L
   HDP@J <- J
-  HDP@prior <- array(rep(c(prior$mu, prior$n, prior$v, prior$vs2), each=(L*J)), c(L,J,4))
+  HDP@prior <- prior
+  HDP@posterior <- array(rep(c(prior[1], prior[2], prior[3], prior[4]), each=(L*J)), c(L,J,4))
   HDP@Nmat <- matrix(0, nrow=L, ncol=J)
   HDP@details <- list(iteration=0, thinning=thinning, burnin=burnin, max_iter=max_iter)
   HDP@conc_param <- c(1,1)
-  #HDP@conc_param[1] <- rgamma(1,5,0.1)
-  #HDP@conc_param[2] <- rgamma(1,0.1,0.1)
+  HDP@conc_param[1] <- rgamma(1,1,1)
+  HDP@conc_param[2] <- rgamma(1,1,0.1)
   HDP <- update.HDP(HDP)
-  HDP@Chains <- list(theta=HDP@theta, phi=HDP@phi, weights=HDP@weights, pi=HDP@pi)
-  HDP@ChainStorage <- init.ChainStorage(L, J, HDP@Chains, max_iter-burnin, thinning)
+  theta <- matrix(rep(HDP@theta, J), ncol=J)
+  HDP@Chains <- list(theta=theta, phi=theta, weights=theta, pi=HDP@pi)
+  HDP@ChainStorage <- init.ChainStorage(HDP@Chains, max_iter-burnin, thinning)
   return(HDP)
 }
 
@@ -44,12 +46,12 @@ init.HDP <- function(prior, L, J, thinning, burnin, max_iter, ...){
 #' @export
 update.HDP <- function(HDP, ...){
   #print(HDP@conc_param)
-  atoms <- rNIG(HDP@L, c(HDP@prior[,,1]), c(HDP@prior[,,2]), c(HDP@prior[,,3]), c(HDP@prior[,,4]))
+  atoms <- rNIG(HDP@L, c(HDP@posterior[,,1]), c(HDP@posterior[,,2]), c(HDP@posterior[,,3]), c(HDP@posterior[,,4]))
   HDP@theta <- matrix(atoms[,1], nrow=HDP@L)
   HDP@phi <- matrix(atoms[,2], nrow=HDP@L)
   # 1st level
-  sums <- remainingSum(round(c(HDP@prior[,1,2])))
-  u_k <- rbeta(HDP@L, shape1 = 1 + c(HDP@prior[,1,2]), shape2 = HDP@conc_param[1] + sums)
+  sums <- remainingSum(round(c(HDP@posterior[,1,2])))
+  u_k <- rbeta(HDP@L, shape1 = 1 + c(HDP@posterior[,1,2]), shape2 = HDP@conc_param[1] + sums)
   HDP@pi <- as.matrix(stickBreaking(u_k))
   
   # 2nd level
@@ -64,10 +66,10 @@ update.HDP <- function(HDP, ...){
   HDP@weights <- apply(v_lk, 2, stickBreaking)
   a_conc1 <- 5
   b_conc1 <- 0.1
-  a_conc2 <- 0.1
+  a_conc2 <- 5
   b_conc2 <- 0.1
-  #HDP@conc_param[1] <- rgamma(1, a_conc1 + HDP@L - 1, b_conc1 - sum(log(1-u_k[1:HDP@L-1])))
-  #HDP@conc_param[2] <- rgamma(1, a_conc2 + HDP@J*(HDP@L-1), b_conc2 - sum(log(1-v_lk[-c(seq(HDP@L, HDP@J*HDP@L, HDP@L), which(v_lk==1))])))
+  HDP@conc_param[1] <- rgamma(1, a_conc1 + HDP@L - 1, b_conc1 - sum(log(1-u_k[1:HDP@L-1])))
+  HDP@conc_param[2] <- rgamma(1, a_conc2 + HDP@J*(HDP@L-1), b_conc2 - sum(log(1-v_lk[-c(seq(HDP@L, HDP@J*HDP@L, HDP@L), which(v_lk==1))])))
   return(HDP)
 }
 
@@ -84,8 +86,8 @@ selectXi.HDP <- function(HDP, DataStorage, max_lik=F, ...){
   }
   
   reshape_prob <- matrix(reshape_prob, nrow=HDP@L)
-  xi <- vapply(as.data.frame(reshape_prob), DP_sample, numeric(1), n=nrow(reshape_prob), size=1, replace=F)
-  xi <- as.vector(xi)
+  #xi <- vapply(as.data.frame(reshape_prob), DP_sample, numeric(1), n=nrow(reshape_prob), size=1, replace=F)
+  #xi <- as.vector(xi)
   xi <- apply(reshape_prob, 2, DP_sample, n=HDP@L, size=1, replace=F, max_lik=max_lik)
   return(xi)
 }
@@ -104,7 +106,7 @@ MCMC.HDP <- function(HDP, DataStorage, iter, ...){
     DataStorage@presentation$zeta <- rep(1:HDP@J, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
     HDP@Nmat <- createNmat(DataStorage, HDP@L)
     DataStorage <- DPsurv::gibbsStep(DP=HDP, DataStorage=DataStorage, xi=xi, zeta=rep(1, length(xi)))
-    HDP@prior <- DPsurv::mStep(HDP@prior, DataStorage@simulation, xi, rep(1, length(xi))) 
+    HDP@posterior <- DPsurv::mStep(HDP@prior, HDP@posterior, DataStorage@simulation, xi, rep(1, length(xi))) 
     if(HDP@details[["iteration"]] > HDP@details[["burnin"]] & (HDP@details[["iteration"]] %% HDP@details[["thinning"]])==0){
       setTxtProgressBar(pb, i/iter)
       HDP@Chains <- list(theta=HDP@theta, phi=HDP@phi, weights=HDP@weights)#, pi=HDP@pi)

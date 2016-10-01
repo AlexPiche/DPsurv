@@ -57,23 +57,23 @@ train_test_split <- function(dataset, DataStorage, fraction=0.1, weights=rep(0,9
 #' @export
 init.DataStorage.simple <- function(dataset, fraction_test, weights, application=F, ...){
   dataset <- plyr::arrange(dataset, Sample)
-  browser()
   DataStorage <- methods::new("DataStorage")
   if(!application) {
     DataStorage <- train_test_split(dataset, DataStorage, fraction_test, weights)
   }else{
     DataStorage@presentation <- dataset
+    DataStorage@validation <- dataset
   }
   X <- lapply(unique(DataStorage@presentation$Sample), function(ss) t(matrix(subset(DataStorage@presentation, Sample == ss)$status)))
   censoring <- do.call(plyr::rbind.fill.matrix, X)
-  DataStorage@censoring <- c(t(censoring))
+  DataStorage@censoring <- as.numeric(c(t(censoring)))
   X <- lapply(unique(DataStorage@presentation$Sample), function(ss) t(matrix(subset(DataStorage@presentation, Sample == ss)$data)))
   computation <- do.call(plyr::rbind.fill.matrix, X)
   # log the data for computation purposes
   DataStorage@computation <- log(c(t(computation)))
   DataStorage@simulation <- DataStorage@computation
-  max_grid <- ceiling(round(1.5*max(dataset$data)))
-  DataStorage@grid <- seq(0, max_grid, round(max_grid/250))
+  max_grid <- ceiling(round(2*max(dataset$data)))
+  DataStorage@grid <- seq(0, max_grid, ceiling(max_grid/250))
   DataStorage@mask <-rowSums(!is.na(computation))
   #DataStorage@xi <- rep(0, 2)
   return(DataStorage)
@@ -93,19 +93,20 @@ findRt <- function(x){
 #'
 #' @export
 simSurvMix <- function(N, prob, factor){
-  # 15% censoring
+  factor <- 1
+  foltime <- 10000
   toRet <- data.frame(data=rep(NA,N), status=rep(NA,N))
   for (n in 1:N){
     i <- runif(1)
     if(i < prob[1]){
       # -log(1/uniroot(function(x) pweibull(x,,b1)-0.85, interval=c(0,exp(150)))$root)
-      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 3.75, beta0.ev = 3.75, dist.ev = "weibull")[,c('stop', 'status')]
+      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = foltime, anc.cens = 1, beta0.cens = factor*3.75, beta0.ev = 3.75, dist.ev = "weibull")[,c('stop', 'status')]
     }else if(i < sum(prob[1:2])){
       # log(uniroot(function(x) plnorm(x,3.887,1)-0.85, interval=c(0,exp(15)))$root)
-      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = 3.887, beta0.ev = 3.887, dist.ev = "lnorm", dist.cens = "lnorm")[,c('stop', 'status')]
+      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = foltime, anc.cens = 1, beta0.cens = factor*3.887, beta0.ev = 3.887, dist.ev = "lnorm", dist.cens = "lnorm")[,c('stop', 'status')]
     }else if(i < sum(prob[1:3])){
       #-log(1/(uniroot(function(x) pweibull(x,a3,b3)-0.85, interval=c(0,exp(150)))$root)^3) 
-      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 3, foltime = 10000, anc.cens = 3, beta0.cens = 4.5, beta0.ev = 4.5, dist.ev = "weibull")[,c('stop', 'status')]
+      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 3, foltime = foltime, anc.cens = 3, beta0.cens = factor*4.5, beta0.ev = 4.5, dist.ev = "weibull")[,c('stop', 'status')]
     }else{
       toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = factor*8, beta0.ev = 8, dist.ev = "weibull")[,c('stop', 'status')]
     }

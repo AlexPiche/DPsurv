@@ -6,7 +6,8 @@
 \usage{
 Simulation(seed, replications = 32, iterations = 55000, burnin = 5000,
   thinning = 50, L = 35, K = 20, n = 100, J = 10, case = "1",
-  factor = 1, val_prop = 0, nb_cores = 4)
+  factor = 1, Prior = list(mu = 0, n = 0.01, v = 2 * 3, vs2 = 2 * 1),
+  val_prop = 0, nb_cores = 4)
 }
 \arguments{
 \item{seed}{}

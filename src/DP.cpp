@@ -2,6 +2,7 @@
 // we only include RcppArmadillo.h which pulls Rcpp.h in for us
 #include "RcppArmadillo.h"
 #include "RcppCommon.h"
+#include "math.h"
 using namespace Rcpp;
 
 
@@ -56,7 +57,7 @@ NumericMatrix eStep(NumericVector data, NumericVector censoring, NumericVector t
   for(int l=0; l < L; l++){
     //function (x, mean = 0, sd = 1, log = FALSE)
     // function (q, mean = 0, sd = 1, lower.tail = TRUE, log.p = FALSE)
-    myMat(l,_) = log_w(l)+(censoring)*(dnorm(data, theta[l], std::sqrt(phi[l]), true))+(ones-censoring)*(pnorm(data, theta[l], std::sqrt(phi[l]), false, true));
+    myMat(l,_) = log_w(l)+(censoring)*(dnorm(data, theta[l], sqrt(phi[l]), true))+(ones-censoring)*(pnorm(data, theta[l], sqrt(phi[l]), false, true));
   }
   
   return myMat;
@@ -73,20 +74,21 @@ NumericMatrix eStep(NumericVector data, NumericVector censoring, NumericVector t
 //' @param zeta
 //' @export
 // [[Rcpp::export]]
-arma::cube mStep(arma::cube prior, NumericVector data, IntegerVector xi, IntegerVector zeta){
+arma::cube mStep(NumericVector prior, arma::cube posterior, NumericVector data, IntegerVector xi, IntegerVector zeta){
   //NumericVector data = DataStorage.slot("simulation");
   const int N = data.length();
   
   //arma::cube prior = DP.slot("prior");
   
-  arma::mat mu = prior.slice(0);
-  arma::mat Nmat = prior.slice(1);
-  arma::mat v = prior.slice(2);
-  arma::mat vs2 = prior.slice(3);
+  arma::mat mu = posterior.slice(0);
+  arma::mat Nmat = posterior.slice(1);
+  arma::mat v = posterior.slice(2);
+  arma::mat vs2 = posterior.slice(3);
   
-  std::fill(v.begin(), v.end(), 3.0);
-  std::fill(vs2.begin(), vs2.end(), 3.0);
-  std::fill(Nmat.begin(), Nmat.end(), 0.1);
+  std::fill(mu.begin(), mu.end(), prior[0]);
+  std::fill(Nmat.begin(), Nmat.end(), prior[1]);
+  std::fill(v.begin(), v.end(), prior[2]);
+  std::fill(vs2.begin(), vs2.end(), prior[3]);
   
   int temp;
   double update_mu;
@@ -112,14 +114,14 @@ arma::cube mStep(arma::cube prior, NumericVector data, IntegerVector xi, Integer
       vs2(l,k) = update_vs2;
     }
   }
-  arma::cube posterior = prior;
-  posterior.slice(0) = mu;
-  posterior.slice(1) = Nmat;
-  posterior.slice(2) = v;
-  posterior.slice(3) = vs2;
+  arma::cube toRet = posterior;
+  toRet.slice(0) = mu;
+  toRet.slice(1) = Nmat;
+  toRet.slice(2) = v;
+  toRet.slice(3) = vs2;
   
   //DP.slot("prior") = posterior;
-  return posterior;
+  return toRet;
 }
 
 //' @title

@@ -4,11 +4,11 @@ setClass("ChainStorage", representation(chains='list'))
 
 #'
 #' @export
-init.ChainStorage <- function(L, J, Chains, iterations, thinning, ...){
+init.ChainStorage <- function(Chains, iterations, thinning, ...){
   ChainStorage <- methods::new('ChainStorage')
   chains <- list()
   for(chain in names(Chains)){
-    chains[[chain]] = array(dim=c(L, J, iterations/thinning))
+    chains[[chain]] = array(dim=c(dim(Chains[[chain]]), iterations/thinning))
   }
   ChainStorage@chains <- chains
   return(ChainStorage)
@@ -19,9 +19,11 @@ init.ChainStorage <- function(L, J, Chains, iterations, thinning, ...){
 saveChain.ChainStorage <- function(zeta, Chains, iteration, ChainStorage, ...){
   for(chain in names(Chains)){
     for(i in 1:length(zeta)){
-      if(dim(Chains[[chain]])[2] > 1){
+      if(chain=="prob"){
+        ChainStorage@chains[[chain]][, i, iteration] <- Chains[[chain]][, i]
+      } else if(dim(Chains[[chain]])[2] > 1){
         ChainStorage@chains[[chain]][, i, iteration] <- Chains[[chain]][, zeta[i]]
-      }else{
+      } else {
         # HDP
         ChainStorage@chains[[chain]][, i, iteration] <- Chains[[chain]][, 1]
       }
@@ -61,8 +63,8 @@ getICDF.ChainStorage <- function(DP, myGrid, zeta, quantiles=0.5, i=0){
   
   curves <- mapply(evaluate.ICDF, theta_mat, phi_mat, weights_mat, MoreArgs = list(grid=myGrid))
   curvesReshape <- array(curves, c(dim(curves)[1], length(zeta), N/length(zeta)))
-  meanCurves <- apply(curvesReshape, c(1,2), quantile, quantiles, na.rm = T)
-  return(meanCurves)
+  medianCurves <- apply(curvesReshape, c(1,2), quantile, quantiles, na.rm = T)
+  return(medianCurves)
 }
 
 #'
