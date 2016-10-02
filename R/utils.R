@@ -14,10 +14,10 @@ stickBreaking <- function(beta){
 #'
 #' @export
 rNIG <- function(n, mu_0, n_0, v_0, vs2_0){
-  phi <- invgamma::rinvgamma(n=n, shape=0.5*v_0, rate=0.5*vs2_0)
+
+  phi <- rgamma(n=n, shape=0.5*v_0, rate=0.5*vs2_0)
   #phi <- invgamma::rinvgamma(n=n, shape=0.5*v_0, rate=0.5*vs2_0)
-  #phi1 <- MCMCpack::rinvgamma(n=n, shape=0.5*v_0, scale=0.5*vs2_0)
-  theta <- rnorm(n=n, mean=mu_0, sd=sqrt(phi/n_0))
+  theta <- rnorm(n=n, mean=mu_0, sd=(phi*n_0)^(-1/2))
   return(cbind(theta, phi))
 }
 
@@ -61,9 +61,8 @@ evaluate.PDF <- function(theta, phi, weights, L, grid, ...){
 #'
 #' @export
 stabilize <- function(mat){
-  maxpercol = apply(mat, 2, max)
-  maxPerColMat = matrix(rep(maxpercol, each=nrow(mat)), ncol=ncol(mat))
-  mat = mat - maxPerColMat
+  maxPerCol = apply(mat, 2, max)
+  mat <- sweep(mat, 2, maxPerCol, "-")
   toRet <- exp(mat)
   toRet
 }
@@ -124,6 +123,7 @@ validate.DP <- function(DP, DataStorage){
                     indices = indices,
                     status=rep(DataStorage@validation$status, length(DataStorage@mask)/3),
                     zeta=rep(1:length(DataStorage@mask), each=10))
+  print(paste(class(DP)[1], score))
   return(score)
 }
 

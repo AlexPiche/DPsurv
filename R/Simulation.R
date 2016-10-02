@@ -11,7 +11,7 @@
 #'
 #' @export
 Simulation <- function(seed,replications=32,iterations=55000,burnin=5000,thinning=50,L=35,K=20,
-                       n=100,J=10,case="1",factor=1, Prior = list(mu=0, n=0.01, v=2*3, vs2=2*1), val_prop=0, nb_cores=4){
+                       n=100,J=10,case="1",factor=1, Prior = c(0, 0.01, 2*1/10, 2*1/10, rep(c(5,0.1), 2)), val_prop=0, nb_cores=4){
   options(gsubfn.engine = "R")
   case <- toString(case)
   weights <- switch(case,
@@ -72,7 +72,7 @@ Applications <- function(seed,iterations=55000,burnin=5000,thinning=50,L=35,K=20
   
   #for(dataset in myData){
   data <- init.DataStorage.simple(performArt, 0, weights=0, application=T)
-  Prior = c(median(log(data@presentation$data)), 0.01, 3*2, 1*2)
+  Prior = c(median(log(data@presentation$data)), 0.01, 2*1/10, 2*1/10, rep(c(5,0.1), 2))
   parallel::mclapply(1:3 ,function(i){
     J <- length(unique(data@presentation$zeta))
     if(i == 1){

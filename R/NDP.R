@@ -30,7 +30,8 @@ init.NDP <- function(prior, J, K, L, thinning, burnin, max_iter, ...){
   NDP@J <- J
   NDP@prior <- prior
   NDP@posterior <- array(rep(c(prior[1], prior[2], prior[3], prior[4]), each=(K*L)), c(L,K,4))
-  NDP@conc_param <- c(1,1)
+  NDP@conc_param <- rgamma(2, prior[c(5,7)], prior[c(6,8)])
+  
   NDP <- update.NDP(NDP)
   myProb <- matrix(NA, nrow=K, ncol=J)
   myParams <- matrix(NA, nrow=L, ncol=J)
@@ -52,12 +53,9 @@ update.NDP <- function(NDP, ...){
   sums <- apply(round(NDP@posterior[,,2]), 2, remainingSum)
   v_lk <- matrix(rbeta(NDP@L*NDP@K, shape1 = 1 + c(round(NDP@posterior[,,2])), shape2 = NDP@conc_param[2] + c(sums)),nrow=NDP@L)
   NDP@weights <- apply(v_lk, 2, stickBreaking)
-  a_conc1 <- 5
-  b_conc1 <- 0.1
-  a_conc2 <- 5
-  b_conc2 <- 0.1
-  NDP@conc_param[1] <- rgamma(1, a_conc1 + NDP@K - 1, b_conc1 - sum(log(1-u_k[1:NDP@K-1])))
-  NDP@conc_param[2] <- rgamma(1, a_conc2 + NDP@K*(NDP@L-1) - 1, b_conc2 - sum(log(1-v_lk[-seq(NDP@L, NDP@K*NDP@L, NDP@L)])))
+  
+  NDP@conc_param[1] <- rgamma(1, NDP@prior[5] + NDP@K - 1, NDP@prior[6] - sum(log(1-u_k[1:NDP@K-1])))
+  NDP@conc_param[2] <- rgamma(1, NDP@prior[7] + NDP@K*(NDP@L-1), NDP@prior[8] - sum(log(1-v_lk[-seq(NDP@L, NDP@K*NDP@L, NDP@L)])))
   
   return(NDP)
 }

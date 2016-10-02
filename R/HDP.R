@@ -20,7 +20,7 @@
 #'
 #' @export
 setClass("HDP", representation(phi = 'matrix', theta='matrix', weights='matrix', Nmat='matrix', details='list', conc_param = 'numeric',
-                              prior = 'numeric', posterior = 'array', L = 'numeric', J = 'numeric', Chains='list', pi='matrix', ChainStorage='ChainStorage'))
+                               prior = 'numeric', posterior = 'array', L = 'numeric', J = 'numeric', Chains='list', pi='matrix', ChainStorage='ChainStorage'))
 
 #'
 #' @export
@@ -32,12 +32,11 @@ init.HDP <- function(prior, L, J, thinning, burnin, max_iter, ...){
   HDP@posterior <- array(rep(c(prior[1], prior[2], prior[3], prior[4]), each=(L*J)), c(L,J,4))
   HDP@Nmat <- matrix(0, nrow=L, ncol=J)
   HDP@details <- list(iteration=0, thinning=thinning, burnin=burnin, max_iter=max_iter)
-  HDP@conc_param <- c(1,1)
-  HDP@conc_param[1] <- rgamma(1,1,1)
-  HDP@conc_param[2] <- rgamma(1,1,0.1)
+  HDP@conc_param <- rgamma(2, prior[c(5,7)], prior[c(6,8)])
   HDP <- update.HDP(HDP)
-  theta <- matrix(rep(HDP@theta, J), ncol=J)
-  HDP@Chains <- list(theta=theta, phi=theta, weights=theta, pi=HDP@pi)
+  myThetas <- matrix(rep(NA, J), nrow=J, ncol=1)
+  myParams <- matrix(rep(NA, J*L), nrow=L, ncol=J)
+  HDP@Chains <- list(theta=myParams, phi=myParams, weights=myParams, pi=HDP@pi)
   HDP@ChainStorage <- init.ChainStorage(HDP@Chains, max_iter-burnin, thinning)
   return(HDP)
 }
@@ -64,12 +63,9 @@ update.HDP <- function(HDP, ...){
   v_lk <- matrix(v_lk, ncol = HDP@J, byrow = F)
   
   HDP@weights <- apply(v_lk, 2, stickBreaking)
-  a_conc1 <- 5
-  b_conc1 <- 0.1
-  a_conc2 <- 5
-  b_conc2 <- 0.1
-  HDP@conc_param[1] <- rgamma(1, a_conc1 + HDP@L - 1, b_conc1 - sum(log(1-u_k[1:HDP@L-1])))
-  HDP@conc_param[2] <- rgamma(1, a_conc2 + HDP@J*(HDP@L-1), b_conc2 - sum(log(1-v_lk[-c(seq(HDP@L, HDP@J*HDP@L, HDP@L), which(v_lk==1))])))
+  
+  HDP@conc_param[1] <- rgamma(1, HDP@prior[5] + HDP@L - 1, HDP@prior[6] - sum(log(1-u_k[1:HDP@L-1])))
+  HDP@conc_param[2] <- rgamma(1, HDP@prior[7] + HDP@J*(HDP@L-1), HDP@prior[8] - sum(log(1-v_lk[-c(seq(HDP@L, HDP@J*HDP@L, HDP@L), which(v_lk==1))])))
   return(HDP)
 }
 
@@ -98,7 +94,7 @@ MCMC.HDP <- function(HDP, DataStorage, iter, ...){
   i <- 0
   pb <- txtProgressBar(style = 3)
   while(HDP@details[['iteration']] < HDP@details[['max_iter']] & i < iter){
-
+    
     HDP@details[['iteration']] <- HDP@details[['iteration']] + 1
     i <- i + 1
     xi <- selectXi.HDP(HDP, DataStorage)
