@@ -86,7 +86,7 @@ selectZetaXi.NDP_c <- compiler::cmpfun(selectZetaXi.NDP)
 #' @export
 MCMC.NDP <- function(NDP, DataStorage, iter, ...){
   j <- 0
-  pb <- txtProgressBar(style = 3)
+  pb <- utils::txtProgressBar(style = 3)
   while(NDP@details[['iteration']] < NDP@details[['max_iter']] & j < iter){
     
     NDP@details[['iteration']] <- NDP@details[['iteration']] + 1
@@ -99,7 +99,7 @@ MCMC.NDP <- function(NDP, DataStorage, iter, ...){
                                      xi=xi, zeta=rep(zeta, each = max(DataStorage@mask)))
     NDP@posterior <- DPsurv::mStep(NDP@prior, NDP@posterior, DataStorage@simulation, xi=xi, zeta=rep(zeta, each = max(DataStorage@mask)))
     if(NDP@details[["iteration"]]>NDP@details[["burnin"]] & (NDP@details[["iteration"]] %% NDP@details[["thinning"]])==0){
-      setTxtProgressBar(pb, j/iter)
+      utils::setTxtProgressBar(pb, j/iter)
       NDP@Chains <- list(theta=NDP@theta, phi=NDP@phi, weights=NDP@weights, prob=t(ZetaXi[["prob"]]))
       NDP@ChainStorage <- saveChain.ChainStorage(zeta=zeta, Chains=NDP@Chains, iteration=(NDP@details[["iteration"]]-NDP@details[["burnin"]])/NDP@details[["thinning"]], ChainStorage=NDP@ChainStorage)
     }

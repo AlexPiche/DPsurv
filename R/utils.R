@@ -15,9 +15,9 @@ stickBreaking <- function(beta){
 #' @export
 rNIG <- function(n, mu_0, n_0, v_0, vs2_0){
 
-  phi <- rgamma(n=n, shape=0.5*v_0, rate=0.5*vs2_0)
-  #phi <- invgamma::rinvgamma(n=n, shape=0.5*v_0, rate=0.5*vs2_0)
-  theta <- rnorm(n=n, mean=mu_0, sd=(phi*n_0)^(-1/2))
+  #phi <- rgamma(n=n, shape=0.5*v_0, rate=0.5*vs2_0)
+  phi <- invgamma::rinvgamma(n=n, shape=0.5*v_0, rate=0.5*vs2_0)
+  theta <- rnorm(n=n, mean=mu_0, sd=sqrt(phi/n_0))
   return(cbind(theta, phi))
 }
 

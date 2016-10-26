@@ -36,7 +36,7 @@ init.HDP <- function(prior, L, J, thinning, burnin, max_iter, ...){
   HDP <- update.HDP(HDP)
   myThetas <- matrix(rep(NA, J), nrow=J, ncol=1)
   myParams <- matrix(rep(NA, J*L), nrow=L, ncol=J)
-  HDP@Chains <- list(theta=myParams, phi=myParams, weights=myParams, pi=HDP@pi)
+  HDP@Chains <- list(theta=myParams, phi=myParams, weights=myParams)
   HDP@ChainStorage <- init.ChainStorage(HDP@Chains, max_iter-burnin, thinning)
   return(HDP)
 }
@@ -92,7 +92,7 @@ selectXi.HDP <- function(HDP, DataStorage, max_lik=F, ...){
 #' @export
 MCMC.HDP <- function(HDP, DataStorage, iter, ...){
   i <- 0
-  pb <- txtProgressBar(style = 3)
+  pb <- utils::txtProgressBar(style = 3)
   while(HDP@details[['iteration']] < HDP@details[['max_iter']] & i < iter){
     
     HDP@details[['iteration']] <- HDP@details[['iteration']] + 1
@@ -104,8 +104,8 @@ MCMC.HDP <- function(HDP, DataStorage, iter, ...){
     DataStorage <- DPsurv::gibbsStep(DP=HDP, DataStorage=DataStorage, xi=xi, zeta=rep(1, length(xi)))
     HDP@posterior <- DPsurv::mStep(HDP@prior, HDP@posterior, DataStorage@simulation, xi, rep(1, length(xi))) 
     if(HDP@details[["iteration"]] > HDP@details[["burnin"]] & (HDP@details[["iteration"]] %% HDP@details[["thinning"]])==0){
-      setTxtProgressBar(pb, i/iter)
-      HDP@Chains <- list(theta=HDP@theta, phi=HDP@phi, weights=HDP@weights)#, pi=HDP@pi)
+      utils::setTxtProgressBar(pb, i/iter)
+      HDP@Chains <- list(theta=HDP@theta, phi=HDP@phi, weights=HDP@weights)
       HDP@ChainStorage <- saveChain.ChainStorage(zeta=1:HDP@J, Chains=HDP@Chains, iteration = (HDP@details[["iteration"]]-HDP@details[["burnin"]])/HDP@details[["thinning"]], ChainStorage=HDP@ChainStorage)
     }
     HDP <- update.HDP(HDP)

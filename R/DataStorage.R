@@ -127,7 +127,7 @@ simRecSurvMix <- function(){
 
 #'
 #' @export
-sim.data <- function(weights, n, J, validation_prop=0.1, factor=1){
+sim.data <- function(weights, n, J, validation_prop=0, factor=1){
   N <-  J*n
   
   T1 <- simSurvMix(N, c(weights)[1:3], factor=factor)

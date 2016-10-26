@@ -19,17 +19,20 @@ plot.PDF <- function(theta, phi, weights, L, grid, emp_data, xlim, ...){
 
 #'
 #' @export
-plot.ICDF <- function(DP, myZeta, data, ...){
-  data <- subset(data, zeta == myZeta)
-  data$status <- as.numeric(as.character(data$status))
-  temp <- data[,c("status", "data", "Sample")]
+plot.ICDF <- function(DP, mySample, data, ...){
+  data_pres <- subset(data@presentation, Sample == mySample)
+  data_pres$status <- as.numeric(as.character(data_pres$status))
+  temp <- data_pres[,c("status", "data", "Sample")]
   
-  xlim <- 100 #2*max(temp$data)
+  xlim <- 1.5*max(temp$data)
   grid <- seq(0, xlim, length.out = min(xlim, 1500))
   
   x_cens <- subset(temp, status == 0)$data
-  
-  if(sum(temp$status) > 1){
+  if(dim(data@validation)[1] != dim(data@presentation)[1]){
+   temp2 <- subset(data@validation, TrueDistribution == data_pres$TrueDistribution[1])[, c("data", "status")] 
+   KM <- cbind("True ICDF", temp2)
+   names(KM) <- c("Var1", "Var2", "value")
+  }else if(sum(temp$status) > 1){
     s <- with(temp, survival::Surv(data, status))
     LN1 <- survival::survfit(s ~ 1, data=temp)
     xx <- summary(LN1)
@@ -39,16 +42,17 @@ plot.ICDF <- function(DP, myZeta, data, ...){
   }else{
     KM <- data.frame(Var1=character(), Var2=numeric(), value=numeric())
   }
-  curves <- getICDF.ChainStorage(DP, grid, myZeta, quantiles=c(0.025, 0.5, 0.975))
+  curves <- getICDF.ChainStorage(DP, grid, mySample, quantiles=c(0.025, 0.5, 0.975))
   curves <- reshape2::melt(curves)
   curves$Var2 <- rep(grid, each=3)
-  curves <- rbind(KM, curves)
+  #curves <- rbind(KM, curves)
+  curves <- rbind(KM, curves[, c(1,2,4)])
   
   p <- ggplot2::ggplot(curves, ggplot2::aes(x=Var2, y=value, group=Var1, colour=Var1)) + ggplot2::geom_line() +
     ggplot2::xlim(0, xlim)+ ggplot2::theme_linedraw() +
     ggplot2::xlab("Time") + ggplot2::ylab("Survival") + ggplot2::theme(legend.title = ggplot2::element_blank())  
   p <- p + ggplot2::scale_color_manual(values=c("black","lightskyblue2", 'blue', "lightskyblue2")) + ggplot2::scale_linetype_manual(values = c("dashed", rep("solid", 3)))
-  p <- p + ggplot2::ggtitle(paste(class(DP)[1], myZeta)) + ggplot2::geom_vline(xintercept = x_cens, linetype=2)
+  p <- p + ggplot2::ggtitle(paste(class(DP)[1], mySample)) + ggplot2::geom_vline(xintercept = x_cens, linetype=2)
   print(p)
   return(p)
 }
@@ -74,26 +78,24 @@ grid_arrange_shared_legend <- function(plots, ...) {
 
 #'
 #' @export
-plotICDF.DP <- function(DP, DataStorage, zetas=1:DP@J){
-  for(zeta in zetas){
-    plot.ICDF(DP=DP, myZeta=zeta, data=DataStorage@presentation) 
+plotICDF.DP <- function(DP, DataStorage, samples=1:DP@J){
+  for(sample in samples){
+    plot.ICDF(DP=DP, mySample=sample, data=DataStorage) 
   }
 }
 
 #'
 #' @export
 plotHeatmap <- function(DP){
-  
   myLevels <- 1:DP@J
-  zz <- getICDF.ChainStorage(DP, myGrid = seq(1,300, 5), zeta=1:DP@J, quantiles=0.5)
+  if(class(DP)[1] == "HDP"){
+    Z <- DP@ChainStorage@chains[["weights"]]
+  }else{
+    Z <- DP@ChainStorage@chains[["prob"]]
+  }
+  zz <- matrix(aperm(Z, c(1,3,2)), ncol=ncol(Z))
   
   crm1 <- reshape2::melt(cor(zz))#t(matrix(zz, ncol=ncol(zz)))))
-  browser()
-  #mapping <- data.frame(from=1:length(myLevels),to=unique(theObject@T["Sample"]))#, stringsAsFactors=FALSE)
-  #names(mapping) <- c("from", "to")
-  #mapping$to <- lapply(mapping$to, as.character)
-  #crm1$Var1 <- plyr::mapvalues(crm1$Var1, mapping$from, mapping$to)
-  #crm1$Var2 <- plyr::mapvalues(crm1$Var2, mapping$from, mapping$to)
   crm1$Var1 <- factor(crm1$Var1, levels = myLevels, ordered=T)
   crm1$Var2 <- factor(crm1$Var2, levels = myLevels, ordered=T)
   

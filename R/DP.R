@@ -74,7 +74,7 @@ selectXi.DP <- function(DP, DataStorage, max_lik=F){
 #' @export
 MCMC.DP <- function(DP, DataStorage, iter, ...){
   i <- 0
-  pb <- txtProgressBar(style = 3)
+  pb <- utils::txtProgressBar(style = 3)
   while(DP@details[['iteration']] < DP@details[['max_iter']] & i < iter){
     
     DP@details[['iteration']] <- DP@details[['iteration']] + 1
@@ -85,14 +85,13 @@ MCMC.DP <- function(DP, DataStorage, iter, ...){
     prob <- xiZeta[["prob"]]
     DataStorage@presentation$xi <- xi[!is.na(xi)] #rep(xi, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
     DataStorage <- gibbsStep(DP=DP, DataStorage=DataStorage, xi=xi, zeta=rep(1, length(DataStorage@computation))) 
-    
     DP@posterior <- mStep(DP@prior, DP@posterior, DataStorage@simulation, xi=xi, zeta=rep(1, length(DataStorage@computation)))
     if(F){
       map <- mappingMu(c(xi),rep(1,length(xi)), DP@theta)
       #DP@RE <- MCMC.RE(DP@RE, DataStorage@simulation-map)
     }
     if(DP@details[["iteration"]]>DP@details[["burnin"]] & (DP@details[["iteration"]] %% DP@details[["thinning"]])==0){
-      setTxtProgressBar(pb, i/iter)
+      utils::setTxtProgressBar(pb, i/iter)
       DP@Chains <- list(theta=t(DP@theta), phi=t(DP@phi), prob=prob)
       DP@ChainStorage <- saveChain.ChainStorage(zeta=zeta, Chains=DP@Chains, iteration=(DP@details[["iteration"]]-DP@details[["burnin"]])/DP@details[["thinning"]], ChainStorage=DP@ChainStorage)
     }
