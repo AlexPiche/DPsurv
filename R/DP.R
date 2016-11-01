@@ -23,7 +23,7 @@ setClass("DP", representation(weights = 'matrix', phi = 'matrix', theta = 'matri
 
 #'
 #' @export
-init.DP <- function(DP, DataStorage, prior, K, J, thinning, burnin, max_iter, ...){
+init.DP <- function(DataStorage, prior, K, J, thinning, burnin, max_iter, ...){
   DP <- methods::new("DP")
   DP@L <- 1
   DP@K <- K

@@ -20,34 +20,34 @@ getGrid <- function(weights, myPt){
   return(sln)
 }
 
-getICDF.DataStorage <- function(x, weights){
+getICDF.DataStorage <- function(x, weights, params=c(3.75, 3.887, 4.5)){
   a1 <- 1
-  b1 <- (1/exp(-1 * 3.75))^(1/1)
+  b1 <- (1/exp(-1 * params[1]))^(1/1)
   a2 <- 1
-  b2 <- 3.887
+  b2 <- params[2]
   a3 <- 3
-  b3 <- (1/exp(-3 * (4.5)))^(1/3)
+  b3 <- (1/exp(-3 * (params[3])))^(1/3)
   toRet <- weights[1]*pweibull(x,a1,b1)+weights[2]*plnorm(x,b2,a2)+weights[3]*pweibull(x,a3,b3)
   return(1-toRet)
 }
 
 #'
 #' @export
-train_test_split <- function(dataset, DataStorage, fraction=0.1, weights=rep(0,9)){
+train_test_split <- function(dataset, DataStorage, J, fraction=0, weights=rep(0,9)){
   if(fraction > 0){
     idx <- sample.int(dim(dataset)[1], round(fraction*dim(dataset)[1]))
     validation <- dataset[sort(idx),]
     DataStorage@validation <- validation
     dataset <- dataset[-sort(idx),]
   }else{
-    J <- length(unique(DataStorage@presentation$Sample))/3
+    #J <- length(unique(DataStorage@presentation$Sample))/3
     myQuantiles <- seq(0.05, 0.95, 0.1)
-    S1 <- mapply(getGrid, myQuantiles, MoreArgs = list(weights=c(weights)[1:3]))
-    S2 <- mapply(getGrid, myQuantiles, MoreArgs = list(weights=c(weights)[4:6]))
-    S3 <- mapply(getGrid, myQuantiles, MoreArgs = list(weights=c(weights)[7:9]))
+    S1 <- rep(mapply(getGrid, myQuantiles, MoreArgs = list(weights=c(weights)[1:3])), J)
+    S2 <- rep(mapply(getGrid, myQuantiles, MoreArgs = list(weights=c(weights)[4:6])), J)
+    S3 <- rep(mapply(getGrid, myQuantiles, MoreArgs = list(weights=c(weights)[7:9])), J)
     DataStorage@validation <- data.frame(data=c(S1,S2,S3), 
-                                         status=rep(myQuantiles, 3), 
-                                         Sample=rep(1:3, each=length(myQuantiles)))
+                                         status=rep(myQuantiles, 3*J), 
+                                         Sample=rep(1:(3*J), each=length(myQuantiles)))
   }
   DataStorage@presentation <- dataset
   return(DataStorage)
@@ -55,11 +55,11 @@ train_test_split <- function(dataset, DataStorage, fraction=0.1, weights=rep(0,9
 
 #'
 #' @export
-init.DataStorage.simple <- function(dataset, fraction_test, weights, application=F, ...){
+init.DataStorage.simple <- function(dataset, fraction_test, weights, J, application=F, ...){
   dataset <- plyr::arrange(dataset, Sample)
   DataStorage <- methods::new("DataStorage")
   if(!application) {
-    DataStorage <- train_test_split(dataset, DataStorage, fraction_test, weights)
+    DataStorage <- train_test_split(dataset=dataset, DataStorage=DataStorage, J=J, fraction=fraction_test, weights=weights)
   }else{
     DataStorage@presentation <- dataset
     DataStorage@validation <- dataset
@@ -79,11 +79,7 @@ init.DataStorage.simple <- function(dataset, fraction_test, weights, application
   return(DataStorage)
 }
 
-init.DataStorage.recurrent <- function(dataset, ...){
-  #X <- lapply(unique(dataset$Sample), function(ss) t(matrix(subset(dataset, Sample == ss)$real.episode)))
-  #DataStorage@episode <- do.call(plyr::rbind.fill.matrix, X)
-  return(-1)
-}
+
 
 findRt <- function(x){
   xx <- survsim::simple.surv.sim(1000, anc.ev = 3, foltime = 10000, anc.cens = 3, beta0.cens = x, beta0.ev = 4.5, dist.ev = "weibull")[,c('stop', 'status')]
@@ -92,7 +88,7 @@ findRt <- function(x){
 
 #'
 #' @export
-simSurvMix <- function(N, prob, factor){
+simSurvMix <- function(N, prob, factor, params=c(3.75, 3.887, 4.5)){
   factor <- 1
   foltime <- 10000
   toRet <- data.frame(data=rep(NA,N), status=rep(NA,N))
@@ -100,13 +96,13 @@ simSurvMix <- function(N, prob, factor){
     i <- runif(1)
     if(i < prob[1]){
       # -log(1/uniroot(function(x) pweibull(x,,b1)-0.85, interval=c(0,exp(150)))$root)
-      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = foltime, anc.cens = 1, beta0.cens = factor*3.75, beta0.ev = 3.75, dist.ev = "weibull")[,c('stop', 'status')]
+      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = foltime, anc.cens = 1, beta0.cens = factor*params[1], beta0.ev = params[1], dist.ev = "weibull")[,c('stop', 'status')]
     }else if(i < sum(prob[1:2])){
       # log(uniroot(function(x) plnorm(x,3.887,1)-0.85, interval=c(0,exp(15)))$root)
-      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = foltime, anc.cens = 1, beta0.cens = factor*3.887, beta0.ev = 3.887, dist.ev = "lnorm", dist.cens = "lnorm")[,c('stop', 'status')]
+      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = foltime, anc.cens = 1, beta0.cens = factor*params[2], beta0.ev = params[2], dist.ev = "lnorm", dist.cens = "lnorm")[,c('stop', 'status')]
     }else if(i < sum(prob[1:3])){
       #-log(1/(uniroot(function(x) pweibull(x,a3,b3)-0.85, interval=c(0,exp(150)))$root)^3) 
-      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 3, foltime = foltime, anc.cens = 3, beta0.cens = factor*4.5, beta0.ev = 4.5, dist.ev = "weibull")[,c('stop', 'status')]
+      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 3, foltime = foltime, anc.cens = 3, beta0.cens = factor*params[3], beta0.ev = params[3], dist.ev = "weibull")[,c('stop', 'status')]
     }else{
       toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = factor*8, beta0.ev = 8, dist.ev = "weibull")[,c('stop', 'status')]
     }
@@ -114,14 +110,6 @@ simSurvMix <- function(N, prob, factor){
   toRet
 }
 
-#'
-#' @export
-simRecSurvMix <- function(){
-#  sim.data <- rec.ev.sim(n=5000, foltime=1825, dist.ev=c('weibull','weibull'),
-#                         anc.ev=c(1, 1),beta0.ev=c(6.678, 4.430),,
-#                       anc.cens=c(1, 1), beta0.cens=c(6.712, 4.399))
-  return(-1)
-}
 
 
 
@@ -149,7 +137,8 @@ sim.data <- function(weights, n, J, validation_prop=0, factor=1){
   mixture$data <- mixture$data
   
   #names(mixture)[3] <- "data"
-  data <- init.DataStorage.simple(mixture, validation_prop, weights)
+  data <- init.DataStorage.simple(dataset=mixture, fraction_test = validation_prop, weights=weights, J=J)
+  #data@validation <- do.call("rbind", replicate(J, data@validation, simplify = FALSE))
   data
 }
 

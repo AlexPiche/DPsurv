@@ -19,7 +19,7 @@
 #'
 #' @export
 setClass("NDP", representation(DPs = 'list', K = 'numeric', phi = 'matrix', theta='matrix', weights='matrix', details='list', conc_param = 'numeric', J = 'numeric',
-                               prior = 'numeric', posterior = 'array', L = 'numeric', pi='matrix', Chains='list', ChainStorage='ChainStorage'))
+                               m = 'numeric', prior = 'numeric', posterior = 'array', L = 'numeric', pi='matrix', Chains='list', ChainStorage='ChainStorage'))
 
 #'
 #' @export
@@ -31,7 +31,7 @@ init.NDP <- function(prior, J, K, L, thinning, burnin, max_iter, ...){
   NDP@prior <- prior
   NDP@posterior <- array(rep(c(prior[1], prior[2], prior[3], prior[4]), each=(K*L)), c(L,K,4))
   NDP@conc_param <- rgamma(2, prior[c(5,7)], prior[c(6,8)])
-  
+  NDP@m <- rep(0, NDP@K)
   NDP <- update.NDP(NDP)
   myProb <- matrix(NA, nrow=K, ncol=J)
   myParams <- matrix(NA, nrow=L, ncol=J)
@@ -47,8 +47,8 @@ update.NDP <- function(NDP, ...){
   atoms <- rNIG(NDP@L*NDP@K, c(NDP@posterior[,,1]), c(NDP@posterior[,,2]), c(NDP@posterior[,,3]), c(NDP@posterior[,,4]))
   NDP@theta <- matrix(atoms[,1], nrow=NDP@L)
   NDP@phi <- matrix(atoms[,2], nrow=NDP@L)
-  sums <- remainingSum(colSums(round(NDP@posterior[,,2])))
-  u_k <- rbeta(sums, 1 + colSums(round(NDP@posterior[,,2])), NDP@conc_param[1] + sums)
+  sums <- remainingSum(NDP@m)
+  u_k <- rbeta(sums, 1 + NDP@m, NDP@conc_param[1] + sums)
   NDP@pi <- matrix(stickBreaking(u_k), nrow=1)
   sums <- apply(round(NDP@posterior[,,2]), 2, remainingSum)
   v_lk <- matrix(rbeta(NDP@L*NDP@K, shape1 = 1 + c(round(NDP@posterior[,,2])), shape2 = NDP@conc_param[2] + c(sums)),nrow=NDP@L)
@@ -56,7 +56,6 @@ update.NDP <- function(NDP, ...){
   
   NDP@conc_param[1] <- rgamma(1, NDP@prior[5] + NDP@K - 1, NDP@prior[6] - sum(log(1-u_k[1:NDP@K-1])))
   NDP@conc_param[2] <- rgamma(1, NDP@prior[7] + NDP@K*(NDP@L-1), NDP@prior[8] - sum(log(1-v_lk[-seq(NDP@L, NDP@K*NDP@L, NDP@L)])))
-  
   return(NDP)
 }
 
@@ -94,6 +93,7 @@ MCMC.NDP <- function(NDP, DataStorage, iter, ...){
     ZetaXi <- selectZetaXi.NDP(NDP, DataStorage)
     zeta <- ZetaXi[["zeta"]]
     xi <- ZetaXi[["xi"]]
+    NDP@m <- c(table(factor(zeta, levels=1:NDP@K)))
     DataStorage@presentation$zeta <- rep(zeta, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
     DataStorage <- DPsurv::gibbsStep(DP=NDP, DataStorage=DataStorage, 
                                      xi=xi, zeta=rep(zeta, each = max(DataStorage@mask)))
