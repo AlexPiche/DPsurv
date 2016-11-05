@@ -98,46 +98,20 @@ DP_sample <- function(n, size = n, replace = FALSE, prob = NULL, max_lik = F){
 
 #'
 #' @export
-validate.App <- function(DP, DataStorage){
-  MCIW <- rep(NA, length(unique(DataStorage@presentation$zeta)))
-  for(i in as.numeric(unique(DataStorage@presentation$zeta))){
-    grid <- subset(DataStorage@presentation, zeta==i)$data
-    medianCurves <- getICDF.ChainStorage(DP=DP, myGrid=grid, zeta=i, quantiles=c(0.05,0.95))
-    MCIW[i] <- mean(abs(medianCurves[2,,1]-medianCurves[1,,1]))
-  }
-  
-  toRet <- mean(MCIW)
-  print(toRet)
-  toRet
-}
-
-#'
-#' @export
 validate.DP <- function(DP, DataStorage){
-  medianCurves <- getICDF.ChainStorage(DP=DP, myGrid=DataStorage@validation$data, zeta=1:DP@J, quantiles=c(0.025,0.5,0.975))
+  medianCurves <- getICDF.ChainStorage(DP=DP, validation=DataStorage@validation, quantiles=c(0.025,0.5,0.975))
 
-  score <- validate(curves=medianCurves, 
-                    status=DataStorage@validation$status,
-                    zeta=DataStorage@validation$zeta)
+  matrix_medianCurves <- matrix(medianCurves, nrow=3)
+  
+  mwci <- mean(matrix_medianCurves[3,]-matrix_medianCurves[1,])
+  probability <- 1 - matrix_medianCurves[2,]
+  rmse <- RMSE(probability, DataStorage@validation$status)
+  score <- c(rmse, mwci)
   
   print(paste(class(DP)[1], score))
   return(score)
 }
 
-#'
-#' @export
-validate <- function(zeta, i, curves, status){
-  probability <- rep(NA, length(zeta))
-  width <- rep(NA, length(zeta))
-  for(i in 1:length(zeta)){
-    if(!is.na(zeta[i])){
-      probability[i] <- 1-curves[2, i, as.numeric(as.character(zeta[i]))]
-      width[i] <- curves[3, i, as.numeric(as.character(zeta[i]))][[1]] - curves[1, i, as.numeric(as.character(zeta[i]))][[1]]
-    }
-  }
-  rmse <- RMSE(probability, status)#, LogScore(probability, status))
-  return(c(rmse, mean(width, na.rm = T)))
-}
 
 #'
 #'@export

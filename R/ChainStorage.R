@@ -43,26 +43,32 @@ getQuantile.ChainStorage <- function(ChainStorage, quantiles, ...){
 
 #'
 #' @export
-getICDF.ChainStorage <- function(DP, myGrid, zeta, quantiles=0.5, i=0){
+getICDF.ChainStorage <- function(DP, validation, quantiles=0.5, i=0){
+  J <- unique(validation$Sample)
   if(i==0) i <- 1:dim(DP@ChainStorage@chains[["theta"]])[3]
-  N <- dim(DP@ChainStorage@chains[["theta"]])[3]*length(zeta)
+  N <- dim(DP@ChainStorage@chains[["theta"]])[3]*length(J)
   
-  theta_mat <- matrix(DP@ChainStorage@chains[["theta"]][,zeta,i], nrow=DP@L)
+  theta_mat <- matrix(DP@ChainStorage@chains[["theta"]][,J,i], nrow=DP@L)
   theta_mat <- split(t(theta_mat), 1:N)
     
-  phi_mat <- matrix(DP@ChainStorage@chains[["phi"]][,zeta,i], nrow=DP@L)
+  phi_mat <- matrix(DP@ChainStorage@chains[["phi"]][,J,i], nrow=DP@L)
   phi_mat <- split(t(phi_mat), 1:N)
   
   if(!is.null(DP@ChainStorage@chains[["weights"]])){
     # not the DP
-    weights_mat <- matrix(DP@ChainStorage@chains[["weights"]][,zeta,i], nrow=DP@L)
+    weights_mat <- matrix(DP@ChainStorage@chains[["weights"]][,J,i], nrow=DP@L)
   }else{
     weights_mat <- rep(1, N)
   }
   weights_mat <- split(t(weights_mat), 1:N)
   
-  curves <- mapply(evaluate.ICDF, theta_mat, phi_mat, weights_mat, MoreArgs = list(grid=myGrid))
-  curvesReshape <- array(curves, c(dim(curves)[1], length(zeta), N/length(zeta)))
+  X <- lapply(unique(validation$Sample), function(ss) t(matrix(subset(validation, Sample == ss)$data)))
+  myGrid <- do.call(plyr::rbind.fill.matrix, X)
+  myGrid <- apply(myGrid, 2, rep, each=length(i)) 
+  myGrid_mat <- split(myGrid, 1:N)
+  
+  curves <- mapply(evaluate.ICDF, theta_mat, phi_mat, weights_mat, myGrid_mat)
+  curvesReshape <- array(curves, c(dim(curves)[1], length(J), N/length(J)))
   medianCurves <- apply(curvesReshape, c(1,2), quantile, quantiles, na.rm = T)
   return(medianCurves)
 }

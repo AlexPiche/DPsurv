@@ -58,6 +58,7 @@ NumericMatrix eStep(NumericVector data, NumericVector censoring, NumericVector t
     //function (x, mean = 0, sd = 1, log = FALSE)
     // function (q, mean = 0, sd = 1, lower.tail = TRUE, log.p = FALSE)
 	  myMat(l,_) = log_w(l)+(censoring)*(dnorm(data, theta[l], sqrt(phi[l]), true))+(ones-censoring)*(pnorm(data, theta[l], sqrt(phi[l]), false, true));
+    //myVec(l) = sum(myMat(l,_));
   }
   
   return myMat;

@@ -5,7 +5,7 @@
 \title{Simulation}
 \usage{
 Application(seed, iterations = 55000, burnin = 5000, thinning = 50,
-  L = 35, K = 55)
+  L = 55, K = 35)
 }
 \arguments{
 \item{seed}{}
