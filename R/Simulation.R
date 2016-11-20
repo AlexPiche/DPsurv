@@ -37,9 +37,9 @@ Simulation <- function(seed,replications=32,iterations=55000,burnin=5000,thinnin
     score_parFM <- c(0,0)#validation_parFM(ICDF, data@validation$status)
     
     print(paste("DP", i, sep=" "))
-    #G <- init.DP(prior=Prior, K=L, J=3*J, thinning=thinning, burnin=burnin, max_iter=iterations, DataStorage =  data)
-    #G <- MCMC.DP(G, data, iterations)
-    score_DP <- c(0,0)#validate.DP(G, data)
+    G <- init.DP(prior=Prior, K=L, J=3*J, thinning=thinning, burnin=burnin, max_iter=iterations, DataStorage =  data)
+    G <- MCMC.DP(G, data, iterations)
+    score_DP <- validate.DP(G, data)
     
     print(paste("NDP", i, sep=" "))
     G <- init.NDP(prior=Prior, K=K, L=L, J=3*J, thinning=thinning, burnin=burnin, max_iter=iterations)
@@ -48,9 +48,9 @@ Simulation <- function(seed,replications=32,iterations=55000,burnin=5000,thinnin
     score_NDP <- validate.DP(G, data)
     
     print(paste("HDP", i, sep=" "))
-    #G <- init.HDP(prior=Prior, L=L, J=3*J, thinning=thinning, burnin=burnin, max_iter=iterations)
-    #G <- MCMC.HDP(G, data, iterations)
-    score_HDP <- c(0,0)#validate.DP(G, data)
+    G <- init.HDP(prior=Prior, L=L, J=3*J, thinning=thinning, burnin=burnin, max_iter=iterations)
+    G <- MCMC.HDP(G, data, iterations)
+    score_HDP <- validate.DP(G, data)
     toRet <- c(score_DP, score_NDP, score_HDP, score_parFM)
     write.table(t(toRet), file = filename, sep = ",", col.names = F, row.names=F, append=TRUE)
   }, mc.cores = nb_cores )

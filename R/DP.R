@@ -19,7 +19,7 @@
 #'
 #' @export
 setClass("DP", representation(weights = 'matrix', phi = 'matrix', theta = 'matrix', details='list', conc_param='numeric', J='numeric', K='numeric',
-                              prior='numeric', posterior = 'array', L = 'numeric', Chains='list', ChainStorage='ChainStorage'))
+                              prior='numeric', posterior = 'array', L='numeric', m = 'numeric', Chains='list', ChainStorage='ChainStorage'))
 
 #'
 #' @export
@@ -28,6 +28,7 @@ init.DP <- function(DataStorage, prior, K, J, thinning, burnin, max_iter, ...){
   DP@L <- 1
   DP@K <- K
   DP@J <- J
+  DP@m <- rep(0, K)
   DP@prior <- prior
   DP@posterior <- array(rep(c(prior[1], prior[2], prior[3], prior[4]), each=(K)), c(K,1,4))
   DP@conc_param <- rgamma(1, prior[5], prior[7])
@@ -48,8 +49,8 @@ update.DP <- function(DP, ...){
                 v_0=c(DP@posterior[,,3]), vs2_0=c(DP@posterior[,,4]))
   DP@theta <- matrix(atoms[,1], nrow=DP@K)
   DP@phi <- matrix(atoms[,2], nrow=DP@K)
-  sums <- remainingSum(round(c(DP@posterior[,,2])))
-  beta_0 <- rbeta(DP@K, shape1 = 1 + c(DP@posterior[,,2]), shape2 = DP@conc_param + sums)
+  sums <- remainingSum(DP@m)
+  beta_0 <- rbeta(sums, 1 + DP@m, DP@conc_param + sums)
   DP@weights <- as.matrix(stickBreaking(beta_0), ncol=1)
   DP@conc_param <- rgamma(1, DP@prior[5] + DP@L - 1, DP@prior[7] - sum(log(1-DP@weights[1:(DP@L-1)])))
   return(DP)
@@ -83,6 +84,8 @@ MCMC.DP <- function(DP, DataStorage, iter, ...){
     xi <- xiZeta[["xi"]]
     zeta <- xiZeta[["zeta"]]
     prob <- xiZeta[["prob"]]
+    DP@m <- c(table(factor(zeta, levels=1:DP@K)))
+
     DataStorage@presentation$xi <- xi[!is.na(xi)] #rep(xi, as.vector(table(DataStorage@presentation$Sample, useNA = "no")))
     DataStorage <- gibbsStep(DP=DP, DataStorage=DataStorage, xi=xi, zeta=rep(1, length(DataStorage@computation))) 
     DP@posterior <- mStep(DP@prior, DP@posterior, DataStorage@simulation, xi=xi, zeta=rep(1, length(DataStorage@computation)))

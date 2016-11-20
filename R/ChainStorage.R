@@ -44,7 +44,7 @@ getQuantile.ChainStorage <- function(ChainStorage, quantiles, ...){
 #'
 #' @export
 getICDF.ChainStorage <- function(DP, validation, quantiles=0.5, i=0){
-  J <- unique(validation$Sample)
+  J <- as.numeric(unique(validation$Sample))
   if(i==0) i <- 1:dim(DP@ChainStorage@chains[["theta"]])[3]
   N <- dim(DP@ChainStorage@chains[["theta"]])[3]*length(J)
   
@@ -68,8 +68,9 @@ getICDF.ChainStorage <- function(DP, validation, quantiles=0.5, i=0){
   myGrid_mat <- split(myGrid, 1:N)
   
   curves <- mapply(evaluate.ICDF, theta_mat, phi_mat, weights_mat, myGrid_mat)
-  curvesReshape <- array(curves, c(dim(curves)[1], length(J), N/length(J)))
-  medianCurves <- apply(curvesReshape, c(1,2), quantile, quantiles, na.rm = T)
+  curves[is.na(curves)] <- -1
+  curvesReshape <- array(curves, c(dim(curves)[1], N/length(J), length(J)))
+  medianCurves <- apply(curvesReshape, c(1,3), quantile, quantiles, na.rm = T)
   return(medianCurves)
 }
 

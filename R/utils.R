@@ -102,6 +102,7 @@ validate.DP <- function(DP, DataStorage){
   medianCurves <- getICDF.ChainStorage(DP=DP, validation=DataStorage@validation, quantiles=c(0.025,0.5,0.975))
 
   matrix_medianCurves <- matrix(medianCurves, nrow=3)
+  matrix_medianCurves <- matrix_medianCurves[, matrix_medianCurves[2,]>0]
   
   mwci <- mean(matrix_medianCurves[3,]-matrix_medianCurves[1,])
   probability <- 1 - matrix_medianCurves[2,]

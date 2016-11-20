@@ -30,7 +30,7 @@ init.NDP <- function(prior, J, K, L, thinning, burnin, max_iter, ...){
   NDP@J <- J
   NDP@prior <- prior
   NDP@posterior <- array(rep(c(prior[1], prior[2], prior[3], prior[4]), each=(K*L)), c(L,K,4))
-  NDP@conc_param <- c(1,1)#rgamma(2, prior[c(5,7)], prior[c(6,8)])
+  NDP@conc_param <- rgamma(2, prior[c(5,7)], prior[c(6,8)])
   NDP@m <- rep(0, NDP@K)
   NDP <- update.NDP(NDP)
   myProb <- matrix(NA, nrow=K, ncol=J)
