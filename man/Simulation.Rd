@@ -4,8 +4,8 @@
 \alias{Simulation}
 \title{Simulation}
 \usage{
-Simulation(seed, replications = 32, iterations = 55000, burnin = 5000,
-  thinning = 50, L = 35, K = 20, n = 100, J = 10, case = "1",
+Simulation(seed, replications = 1, iterations = 55000, burnin = 5000,
+  thinning = 50, L = 35, K = 20, n = 10, J = 10, case = "1",
   factor = 1, Prior = c(0, 0.01, 2 * 1/3, 2 * 1/3, rep(c(5, 0.1), 2)),
   val_prop = 0, nb_cores = 4)
 }
@@ -16,10 +16,13 @@ Simulation(seed, replications = 32, iterations = 55000, burnin = 5000,
 None
 }
 \description{
-35 simulations
+Simulate heterogeneous datasets of censored observations to be model by three different
+Bayesian nonparametric methods. It writes the results in a csv.
 }
 \examples{
+\dontrun{
 Simulation(seed=1)
+}
 
 }
 

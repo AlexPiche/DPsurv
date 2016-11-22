@@ -2,7 +2,7 @@
 % Please edit documentation in R/Simulation.R
 \name{Application}
 \alias{Application}
-\title{Simulation}
+\title{Application}
 \usage{
 Application(seed, iterations = 55000, burnin = 5000, thinning = 50,
   L = 55, K = 35)
@@ -14,10 +14,12 @@ Application(seed, iterations = 55000, burnin = 5000, thinning = 50,
 None
 }
 \description{
-35 simulations
+Produce the experiment on the performance art dataset.
 }
 \examples{
-Simulation(seed=1)
+\dontrun{
+Application(seed=1)
+}
 
 }
 

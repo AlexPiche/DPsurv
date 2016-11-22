@@ -98,21 +98,36 @@ DP_sample <- function(n, size = n, replace = FALSE, prob = NULL, max_lik = F){
 
 #'
 #' @export
-validate.DP <- function(DP, DataStorage){
+getMedianCurves <- function(DP, DataStorage){
   medianCurves <- getICDF.ChainStorage(DP=DP, validation=DataStorage@validation, quantiles=c(0.025,0.5,0.975))
 
   matrix_medianCurves <- matrix(medianCurves, nrow=3)
   matrix_medianCurves <- matrix_medianCurves[, matrix_medianCurves[2,]>0]
   
+  return(matrix_medianCurves)
+}
+
+#'
+#'@export
+validate.Score <- function(matrix_medianCurves, validation){
   mwci <- mean(matrix_medianCurves[3,]-matrix_medianCurves[1,])
   probability <- 1 - matrix_medianCurves[2,]
-  rmse <- RMSE(probability, DataStorage@validation$status)
-  score <- c(rmse, mwci)
+  rmse <- RMSE(probability, validation$status)
   
-  print(paste(class(DP)[1], score))
+  score <- c(rmse, mwci)
   return(score)
 }
 
+#'
+#'@export
+validate.Coverage <- function(matrix_medianCurves, validation){
+  validation$coverage <- mapply(isWithin, matrix_medianCurves[1,], matrix_medianCurves[3,], 1-validation$status)
+  X <- lapply(unique(validation$Sample), function(ss) t(matrix(subset(validation, Sample == ss)$coverage)))
+  coverage_matrix <- do.call(plyr::rbind.fill.matrix, X)
+  coverage_array <- aperm(array(coverage_matrix, c(10,3,10)), c(1,3,2))
+  coverage <- apply(coverage_array, c(2,3), mean)
+  return(t(coverage))
+}
 
 #'
 #'@export
@@ -121,7 +136,18 @@ mappingMu <- function(xi, zeta, mu,...){
   for(i in 1:length(xi)){
     toRet[i] <- mu[xi[i],zeta[i]]
   }
-  #toRet <- matrix(toRet, ncol=1)
   toRet <- as.numeric(toRet)
   return(toRet)
+}
+
+#'
+#' @export
+myRep <- function(x, y){
+  unlist(mapply(rep, x, y))
+}
+
+#'
+#' @export
+isWithin <- function(lower, upper, x){
+  (lower < x & x < upper)
 }
