@@ -27,7 +27,7 @@ Simulation <- function(seed,replications=1,iterations=55000,burnin=5000,thinning
   filename = paste0("n", n, "J", J, "case", case, "seed", seed, ".csv")
   
   colnames_cov <- c("model", "n", "curve", "0.05","0.15","0.25","0.35","0.45","0.55","0.65","0.75","0.85", "0.95" )
-  colnames_res <- c("RMSE_DP", "CI_DP", "RMSE_NDP", "CI_NDP", "RMSE_HDP", "CI_HDP", "RMSE_ParFM", "CI_ParFM")
+  colnames_res <- c("n", "RMSE_DP", "CI_DP", "RMSE_NDP", "CI_NDP", "RMSE_HDP", "CI_HDP", "RMSE_ParFM", "CI_ParFM")
   write.table(t(colnames_res), file = paste0("res",filename), sep = ",", col.names = F, row.names = F)
   write.table(t(colnames_cov), file = paste0("cov",filename), sep = ",", col.names = F, row.names = F)
   
@@ -40,34 +40,34 @@ Simulation <- function(seed,replications=1,iterations=55000,burnin=5000,thinning
     
     # This line is commented out, since it depends on a modified version of parfm
     # to get confidence interval on the survival curves
-    #matrix_medianCurves <- getMedianCurves.ParFM(data@presentation, data@validation)
-    score_parFM <- c(0,0) #validate.Score(matrix_medianCurves, data@validation)
-    cov_parFM <- matrix(rep(0,3*10), nrow=3) #validate.Coverage(matrix_medianCurves, data@validation)
+    matrix_medianCurves <- getMedianCurves.ParFM(data@presentation, data@validation)
+    score_parFM <- validate.Score(matrix_medianCurves, data@validation)
+    cov_parFM <- validate.Coverage(matrix_medianCurves, data@validation)
     print(paste("GFM", score_parFM))
     
     print(paste("DP", i, sep=" "))
     G <- init.DP(prior=Prior, K=L, J=3*J, thinning=thinning, burnin=burnin, max_iter=iterations, DataStorage =  data)
-    G <- MCMC.DP(G, data, iterations)
-    matrix_medianCurves <- getMedianCurves(G, data)    
-    score_DP <- validate.Score(matrix_medianCurves, data@validation)
-    cov_DP <- validate.Coverage(matrix_medianCurves, data@validation)
+    #G <- MCMC.DP(G, data, iterations)
+    #matrix_medianCurves <- getMedianCurves(G, data)    
+    score_DP <- c(0,0) #validate.Score(matrix_medianCurves, data@validation)
+    cov_DP <- matrix(rep(0,3*10), nrow=3) #validate.Coverage(matrix_medianCurves, data@validation)
     
     print(paste("NDP", i, sep=" "))
     G <- init.NDP(prior=Prior, K=K, L=L, J=3*J, thinning=thinning, burnin=burnin, max_iter=iterations)
-    G <- MCMC.NDP(G, data, iterations)
-    matrix_medianCurves <- getMedianCurves(G, data)    
-    score_NDP <- validate.Score(matrix_medianCurves, data@validation)
-    cov_NDP <- validate.Coverage(matrix_medianCurves, data@validation)
+    #G <- MCMC.NDP(G, data, iterations)
+    #matrix_medianCurves <- getMedianCurves(G, data)    
+    score_NDP <- c(0,0) #validate.Score(matrix_medianCurves, data@validation)
+    cov_NDP <- matrix(rep(0,3*10), nrow=3) #validate.Coverage(matrix_medianCurves, data@validation)
     
     print(paste("HDP", i, sep=" "))
     G <- init.HDP(prior=Prior, L=L, J=3*J, thinning=thinning, burnin=burnin, max_iter=iterations)
-    G <- MCMC.HDP(G, data, iterations)
-    matrix_medianCurves <- getMedianCurves(G, data)    
-    score_HDP <- validate.Score(matrix_medianCurves, data@validation)
-    cov_HDP <- validate.Coverage(matrix_medianCurves, data@validation)
+    #G <- MCMC.HDP(G, data, iterations)
+    #matrix_medianCurves <- getMedianCurves(G, data)    
+    score_HDP <- c(0,0) #validate.Score(matrix_medianCurves, data@validation)
+    cov_HDP <- matrix(rep(0,3*10), nrow=3) #validate.Coverage(matrix_medianCurves, data@validation)
     
-    toRet <- c(score_DP, score_NDP, score_HDP, score_parFM)
-    write.table(t(toRet), file = paste0("res",filename), sep = ",", col.names = F, row.names=F, append=TRUE)
+    toRet <- c(n, score_DP, score_NDP, score_HDP, score_parFM)
+    write.table(t(toRet), file = paste0("res", filename), sep = ",", col.names = F, row.names=F, append=TRUE)
     
     toRet <- rbind(cov_DP, cov_NDP, cov_HDP, cov_parFM)
     

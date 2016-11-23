@@ -98,8 +98,8 @@ DP_sample <- function(n, size = n, replace = FALSE, prob = NULL, max_lik = F){
 
 #'
 #' @export
-getMedianCurves <- function(DP, DataStorage){
-  medianCurves <- getICDF.ChainStorage(DP=DP, validation=DataStorage@validation, quantiles=c(0.025,0.5,0.975))
+getMedianCurves <- function(DP, DataStorage, J=0){
+  medianCurves <- getICDF.ChainStorage(DP=DP, validation=DataStorage@validation, quantiles=c(0.025,0.5,0.975), J=J)
 
   matrix_medianCurves <- matrix(medianCurves, nrow=3)
   matrix_medianCurves <- matrix_medianCurves[, matrix_medianCurves[2,]>0]

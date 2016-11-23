@@ -43,8 +43,8 @@ getQuantile.ChainStorage <- function(ChainStorage, quantiles, ...){
 
 #'
 #' @export
-getICDF.ChainStorage <- function(DP, validation, quantiles=0.5, i=0){
-  J <- as.numeric(unique(validation$Sample))
+getICDF.ChainStorage <- function(DP, validation, quantiles=0.5, i=0, J=0){
+  if(J==0) J <- as.numeric(unique(validation$Sample))
   if(i==0) i <- 1:dim(DP@ChainStorage@chains[["theta"]])[3]
   N <- dim(DP@ChainStorage@chains[["theta"]])[3]*length(J)
   
@@ -62,7 +62,7 @@ getICDF.ChainStorage <- function(DP, validation, quantiles=0.5, i=0){
   }
   weights_mat <- split(t(weights_mat), 1:N)
   
-  X <- lapply(unique(validation$Sample), function(ss) t(matrix(subset(validation, Sample == ss)$data)))
+  X <- lapply(J, function(ss) t(matrix(subset(validation, Sample == ss)$data)))
   myGrid <- do.call(plyr::rbind.fill.matrix, X)
   myGrid <- apply(myGrid, 2, rep, each=length(i)) 
   myGrid_mat <- split(myGrid, 1:N)

@@ -1,7 +1,7 @@
 #'
 #' @export
-Testing <- function(seed, data=NA, iterations=55000,burnin=5000,thinning=50,L=55,K=35, valid_prop = 0.0,
-                    n=10,J=10,case="1",factor=1, Prior = c(0, 0.01, 2*1/3, 2*1/3, rep(c(5, 0.1), 2)), plotting=F){
+Testing <- function(seed, data=NA, iterations=1000,burnin=500,thinning=50,L=55,K=35, valid_prop = 0.0, mySample=0,
+                    n=5,J=40,case="1",factor=1, Prior = c(0, 0.01, 2*1/3, 2*1/3, rep(c(5, 0.1), 2)), plotting=F){
   options(gsubfn.engine = "R")
   case <- toString(case)
   weights <- switch(case,
@@ -17,8 +17,6 @@ Testing <- function(seed, data=NA, iterations=55000,burnin=5000,thinning=50,L=55
   Prior[1]<- log(median(data@presentation$data))
   
 
-  ICDF <- parfm_survival_curves_estimate(data@presentation, data@validation)
-  score_parFM <- validation_parFM(ICDF, data@validation$status)
   
   save(data, file = "data.RData")
   G <- init.DP(prior=Prior, K=L, J=J, thinning=thinning, burnin=burnin, max_iter=iterations, DataStorage =  data)
@@ -26,30 +24,26 @@ Testing <- function(seed, data=NA, iterations=55000,burnin=5000,thinning=50,L=55
   save(G1, file = "G1.RData")
   
   if(plotting) {
-    plotICDF.DP(G1, data)
+    plotICDF.DP(G1, data, mySample)
     plotHeatmap(G1)
   }
-  score_DP <- validate.DP(G1, data)
   
   G <- init.NDP(prior=Prior, K=K, L=L, J=J, thinning=thinning, burnin=burnin, max_iter=iterations)
   G2 <- MCMC.NDP(G, data, iterations)
   save(G2, file = "G2.RData")
+  
   if(plotting) {
-    plotICDF.DP(G2, data)
+    plotICDF.DP(G2, data, mySample)
     plotHeatmap(G2)
   }
-  score_NDP <- validate.DP(G2, data)
   
   G <- init.HDP(prior=Prior, L=L, J=J, thinning=thinning, burnin=burnin, max_iter=iterations)
   G3 <- MCMC.HDP(G, data, iterations)
   save(G3, file = "G3.RData")
   
   if(plotting) {
-    plotICDF.DP(G3, data)
+    plotICDF.DP(G3, data, mySample)
     plotHeatmap(G3)
   }
-  score_HDP <- validate.DP(G3, data)
-  #toRet <- c(score_DP, score_NDP, score_HDP)
-  #print(toRet)
 }
 

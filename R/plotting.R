@@ -25,30 +25,20 @@ plot.ICDF <- function(DP, mySample, data, ...){
   temp <- data_pres[,c("status", "data", "Sample")]
   
   xlim <- 1.5*max(temp$data)
-  grid <- seq(0, xlim, length.out = min(xlim, 1500))
+  grid <- subset(data@validation, Sample == mySample)$data
   
   x_cens <- subset(temp, status == 0)$data
-  if(dim(data@validation)[1] != dim(data@presentation)[1]){
-   temp2 <- subset(data@validation, TrueDistribution == data_pres$TrueDistribution[1])[, c("data", "status")] 
-   KM <- cbind("True ICDF", temp2)
-   names(KM) <- c("Var1", "Var2", "value")
-  }else if(sum(temp$status) > 1){
-    s <- with(temp, survival::Surv(data, status))
-    LN1 <- survival::survfit(s ~ 1, data=temp)
-    xx <- summary(LN1)
-    KM <- data.frame(Var1="KM", Var2=xx$time, value=xx$surv)
-    KM <- rbind(data.frame(Var1="KM", Var2=0, value=1), KM)
-    KM$Var3 <- 1
-  }else{
-    KM <- data.frame(Var1=character(), Var2=numeric(), value=numeric())
-  }
-  curves <- getICDF.ChainStorage(DP, grid, mySample, quantiles=c(0.025, 0.5, 0.975))
-  curves <- reshape2::melt(curves)
-  curves$Var2 <- rep(grid, each=3)
-  #curves <- rbind(KM, curves)
-  curves <- rbind(KM, curves[, c(1,2,4)])
+  curves <- data.frame(grid, t(getMedianCurves(DP, data, J=mySample)))
+  names(curves) <- c("grid", "0.025", "0.5", "0.975")
+  curves <- reshape2::melt(curves, "grid")
+  KM <- data.frame(cbind(grid, "True", 1-subset(data@validation, Sample == mySample)$status))
+  names(KM) <- names(curves)
+  KM[, c(1,3)] <- lapply(KM[, c(1,3)], as.character)
+  KM[, c(1,3)] <- lapply(KM[, c(1,3)], as.numeric)
+  curvestoPlot <- rbind(KM, curves)
+  curves$variable <- factor(curves$variable)
   
-  p <- ggplot2::ggplot(curves, ggplot2::aes(x=Var2, y=value, group=Var1, colour=Var1)) + ggplot2::geom_line() +
+  p <- ggplot2::ggplot(curvestoPlot, ggplot2::aes(x=grid, y=value, group=variable, colour=variable)) + ggplot2::geom_line() +
     ggplot2::xlim(0, xlim)+ ggplot2::theme_linedraw() +
     ggplot2::xlab("Time") + ggplot2::ylab("Survival") + ggplot2::theme(legend.title = ggplot2::element_blank())  
   p <- p + ggplot2::scale_color_manual(values=c("black","lightskyblue2", 'blue', "lightskyblue2")) + ggplot2::scale_linetype_manual(values = c("dashed", rep("solid", 3)))
