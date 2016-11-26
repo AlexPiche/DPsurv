@@ -99,7 +99,7 @@ DP_sample <- function(n, size = n, replace = FALSE, prob = NULL, max_lik = F){
 #'
 #' @export
 getMedianCurves <- function(DP, DataStorage, J=0){
-  medianCurves <- getICDF.ChainStorage(DP=DP, validation=DataStorage@validation, quantiles=c(0.025,0.5,0.975), J=J)
+  medianCurves <- validate.ICDF(DP=DP, validation=DataStorage@validation, quantiles=c(0.025,0.5,0.975), J=J)
 
   matrix_medianCurves <- matrix(medianCurves, nrow=3)
   matrix_medianCurves <- matrix_medianCurves[, matrix_medianCurves[2,]>0]
@@ -127,6 +127,41 @@ validate.Coverage <- function(matrix_medianCurves, validation){
   coverage_array <- aperm(array(coverage_matrix, c(10,3,10)), c(1,3,2))
   coverage <- apply(coverage_array, c(2,3), mean)
   return(t(coverage))
+}
+
+#'
+#' @export
+validate.ICDF <- function(DP, validation, quantiles=0.5, i=0, J=0){
+  params <- getParameters.ChainStorage(DP, validation, i, J)
+  curves <- mapply(evaluate.ICDF, params$theta_mat, params$phi_mat,
+                   params$weights_mat, params$myGrid_mat)
+  curves[is.na(curves)] <- -1
+  curvesReshape <- array(curves, c(dim(curves)[1], params[["N"]]/length(J), length(J)))
+  medianCurves <- apply(curvesReshape, c(1,3), quantile, quantiles, na.rm = T)
+  return(medianCurves)
+}
+
+#'
+#'@export
+validate.logPredictiveAccuracy <- function(DP, DataStorage, i=0, J=0){
+  params <- getParameters.ChainStorage(DP, DataStorage@validation, i, J)
+  browser()
+  log_pred <- mapply(evaluate.logPredictiveAccurracy, params$theta_mat, params$phi_mat,
+                   params$weights_mat, params$myGrid_mat, params$myStatus_mat)
+  return(mean(log_pred))
+}
+
+#'
+#'@export
+evaluate.logPredictiveAccurracy <- function(theta, phi, weights, x, status){
+  m <- length(theta)
+  n <- length(x)
+  status <- rep(status, m)
+  browser()
+  toRet <- status*dlnorm(rep(x, m), rep(theta, n), rep(phi, n), log = T) + 
+    (1-status)*plnorm(rep(x, m), rep(theta, n), rep(phi, n), log = T)
+  xx <- rep(weights, n)
+  return(mean(xx+toRet))
 }
 
 #'

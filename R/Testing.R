@@ -28,10 +28,13 @@ Testing <- function(seed, data=NA, iterations=1000,burnin=500,thinning=50,L=55,K
     plotHeatmap(G1)
   }
   
+  log_pred <- validate.logPredictiveAccuracy(G1, data)
+  print(log_pred)
   G <- init.NDP(prior=Prior, K=K, L=L, J=J, thinning=thinning, burnin=burnin, max_iter=iterations)
   G2 <- MCMC.NDP(G, data, iterations)
   save(G2, file = "G2.RData")
-  
+  log_pred <- validate.logPredictiveAccuracy(G2, data)
+  print(log_pred)
   if(plotting) {
     plotICDF.DP(G2, data, mySample)
     plotHeatmap(G2)
@@ -41,6 +44,8 @@ Testing <- function(seed, data=NA, iterations=1000,burnin=500,thinning=50,L=55,K
   G3 <- MCMC.HDP(G, data, iterations)
   save(G3, file = "G3.RData")
   
+  log_pred <- validate.logPredictiveAccuracy(G3, data)
+  print(log_pred)
   if(plotting) {
     plotICDF.DP(G3, data, mySample)
     plotHeatmap(G3)
