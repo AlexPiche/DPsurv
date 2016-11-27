@@ -57,7 +57,7 @@ Simulation <- function(seed,replications=1,iterations=55000,burnin=5000,thinning
     G <- init.HDP(prior=Prior, L=L, J=3*J, thinning=thinning, burnin=burnin, max_iter=iterations)
     G <- MCMC.HDP(G, data, iterations)
     score_HDP <- validate.DP(G, data)
-    browser()
+    
     toRet <- c(n, score_DP$score, score_NDP$score, score_HDP$score, score_parFM$score)
     write.table(t(toRet), file = paste0("res", filename), sep = ",", col.names = F, row.names=F, append=TRUE)
     
@@ -81,7 +81,7 @@ Simulation <- function(seed,replications=1,iterations=55000,burnin=5000,thinning
 #' }
 #'
 #' @export
-Application <- function(seed,iterations=55000,burnin=5000,thinning=50,L=55,K=35){
+Application <- function(seed,iterations=35000,burnin=5000,thinning=50,L=55,K=35){
   options(gsubfn.engine = "R")
   filename = paste0("applications", "seed", seed, ".csv")
   write.table(t(c("Dataset", "Log_DP", "Log_NDP", "Log_HDP")), file = filename, sep = ",", col.names = F, row.names = F)
@@ -96,7 +96,7 @@ Application <- function(seed,iterations=55000,burnin=5000,thinning=50,L=55,K=35)
   data@validation$Sample <- data@validation$zeta
   data@presentation$Sample <- data@validation$zeta
   Prior = c(median(log(data@presentation$data)), 0.01, 2*1/3, 2*1/3, 5, 0.1, 5, 0.1)
-  parallel::mclapply(c(1,2,3), function(i){
+  parallel::mclapply(1:4, function(i){
     print(i)
     J <- length(unique(data@presentation$zeta))
     if(i == 1){
@@ -121,11 +121,7 @@ Application <- function(seed,iterations=55000,burnin=5000,thinning=50,L=55,K=35)
       
     } else {
       data@presentation$Sample <- as.numeric(as.factor(data@presentation$Sample))
-      matrix_medianCurves <- getMedianCurves.ParFM(data@presentation, data@validation)
-      score_parFM <- validate.Score(matrix_medianCurves, data@validation)
-      print(paste("GFM", score_parFM))
-      #ICDF <- parfm_survival_curves_estimate(data@presentation, data@validation)
-      #score_parFM <- validation_parFM(ICDF, data@validation$status)
+      parFM_model <- fitParfm(data, App=T)
     }
     #toRet <- c(dataset, score_DP, score_NDP, score_HDP, T)
     #write.table(t(toRet), file = filename, sep = ",", col.names = F, row.names=F, append=TRUE)

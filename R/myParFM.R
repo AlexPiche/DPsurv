@@ -1,6 +1,6 @@
 #'
 #' @export
-fitParfm <- function(data){
+fitParfm <- function(data, App=F){
   myModel <- parfm::parfm(survival::Surv(data, status) ~ 1, cluster="Sample", 
                           frailty="gamma", data=data@presentation, method="Nelder-Mead")
  
@@ -10,7 +10,7 @@ fitParfm <- function(data){
   
   log_pred <- attributes(myModel$resmodel)$loglik
   
-  score <- validate.Score(matrix_medianCurves, data)
+  score <- validate.Score(matrix_medianCurves, data, App)
   score <- c(score[1], log_pred, score[2])
   coverage <- validate.Coverage(matrix_medianCurves, data@validation)
   print(paste("GFM", score))
