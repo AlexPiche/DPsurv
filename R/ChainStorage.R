@@ -44,7 +44,7 @@ getQuantile.ChainStorage <- function(ChainStorage, quantiles, ...){
 #'
 #' @export
 getParameters.ChainStorage <- function(DP, validation, i=0, J=0){
-  if(J==0) J <- as.numeric(unique(validation$Sample))
+  #if(J==0) J <- as.numeric(unique(validation$Sample))
   if(i==0) i <- 1:dim(DP@ChainStorage@chains[["theta"]])[3]
   N <- dim(DP@ChainStorage@chains[["theta"]])[3]*length(J)
   

@@ -16,11 +16,12 @@ Testing <- function(seed, data=NA, iterations=1000,burnin=500,thinning=50,L=55,K
   
   Prior[1]<- log(median(data@presentation$data))
   
-
+  parfm.model <- fitParfm(data)
   
   save(data, file = "data.RData")
   G <- init.DP(prior=Prior, K=L, J=J, thinning=thinning, burnin=burnin, max_iter=iterations, DataStorage =  data)
   G1 <- MCMC.DP(G, data, iterations)
+  score <- validate.DP(G1, data)
   save(G1, file = "G1.RData")
   
   if(plotting) {
@@ -28,13 +29,10 @@ Testing <- function(seed, data=NA, iterations=1000,burnin=500,thinning=50,L=55,K
     plotHeatmap(G1)
   }
   
-  log_pred <- validate.logPredictiveAccuracy(G1, data)
-  print(log_pred)
   G <- init.NDP(prior=Prior, K=K, L=L, J=J, thinning=thinning, burnin=burnin, max_iter=iterations)
   G2 <- MCMC.NDP(G, data, iterations)
+  score <- validate.DP(G2, data)
   save(G2, file = "G2.RData")
-  log_pred <- validate.logPredictiveAccuracy(G2, data)
-  print(log_pred)
   if(plotting) {
     plotICDF.DP(G2, data, mySample)
     plotHeatmap(G2)
@@ -42,10 +40,9 @@ Testing <- function(seed, data=NA, iterations=1000,burnin=500,thinning=50,L=55,K
   
   G <- init.HDP(prior=Prior, L=L, J=J, thinning=thinning, burnin=burnin, max_iter=iterations)
   G3 <- MCMC.HDP(G, data, iterations)
+  score <- validate.DP(G3, data)
   save(G3, file = "G3.RData")
   
-  log_pred <- validate.logPredictiveAccuracy(G3, data)
-  print(log_pred)
   if(plotting) {
     plotICDF.DP(G3, data, mySample)
     plotHeatmap(G3)
