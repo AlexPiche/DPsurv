@@ -5,10 +5,8 @@ fitParfm <- function(data, App=F){
                           frailty="gamma", data=data@presentation, method="Nelder-Mead")
  
   params <- getSampleParameters.GFM(myModel, data@validation)
-  
   matrix_medianCurves <- parfm_ci(params, data@validation)
-  
-  log_pred <- attributes(myModel$resmodel)$loglik
+  log_pred <-validate.logPredictiveAccuracy.GFM(myModel, params) 
   
   score <- validate.Score(matrix_medianCurves, data, App)
   score <- c(score[1], log_pred, score[2])
@@ -31,6 +29,7 @@ getSampleParameters.GFM <- function(myModel, validation, J=500){
   coefs <- unlist(mapply(rep, as.vector(frailty_coefficients), as.vector(table(validation$Sample))))
   fisher_IM <- solve(hessian)
   mySample <- exp(MASS::mvrnorm(J, log(estimates), Sigma=fisher_IM))
+  mySample_mat <- split(mySample, 1:nrow(mySample))
   
   k <- as.vector(table(validation$Sample))
   frailty_coefficients_mat <- (mapply(parfm::predict.parfm, mySample[,1], MoreArgs = list(object=myModel)))
@@ -52,7 +51,7 @@ getSampleParameters.GFM <- function(myModel, validation, J=500){
   lambda_mat <- split(mySample[, 3], 1:J)
   return(list(coefs=coefs, estimates=estimates, rho_mat=rho_mat, lambda_mat=lambda_mat, 
               frailty_coefficients_mat=frailty_coefficients_mat, myGrid=myGrid,
-              myStatus=myStatus))
+              myStatus=myStatus, mySample_mat=mySample_mat))
 }
 
 #'
@@ -89,15 +88,10 @@ logLik <- function(){
 
 #'
 #' @export
-validate.logPredictiveAccuracy.GFM <- function(params){
-  browser()
-  Mloglikelihood(c(params$frailty_coefficients_mat[1], params$rho_mat[1], params$lambda_mat[1]),
-                 list(time=params$myGrid[1], event=params$myStatus[1]),"weibull", "gamma")
-  toRet <- mapply(Mloglikelihood, 
-                  c(params$frailty_coefficients_mat, params$rho_mat, params$lambda_mat), 
-                  list(time=params$myGrid, event=params$myStatus), 
-                  MoreArgs = list("weibull", "gamma"))
-  return(toRet)
+validate.logPredictiveAccuracy.GFM <- function(myModel, params){
+  Mlog_lik <- mapply(Mloglikelihood, params$mySample_mat, MoreArgs = list(obs=myModel$obsdata, dist="weibull", frailty = "gamma"))
+  log_pred <- mean(-Mlog_lik)
+  return(log_pred)
 }
 
 #'

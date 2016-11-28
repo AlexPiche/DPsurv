@@ -5,7 +5,7 @@ Testing <- function(seed, data=NA, iterations=1000,burnin=500,thinning=50,L=55,K
   options(gsubfn.engine = "R")
   case <- toString(case)
   weights <- switch(case,
-                    "0"=diag(3),
+                    "0"=matrix(c(rep(1,3), rep(0,6)), ncol=3, byrow = T),
                     "1"=matrix(c(0.6, 0.4, 0, 0, 0.4, 0.6, 0.25, 0, 0.75), ncol=3),
                     "2"=matrix(c(rep(0,6), rep(1,3)), ncol=3, byrow = T))
   set.seed(seed)
@@ -29,15 +29,6 @@ Testing <- function(seed, data=NA, iterations=1000,burnin=500,thinning=50,L=55,K
     plotHeatmap(G1)
   }
   
-  G <- init.NDP(prior=Prior, K=K, L=L, J=J, thinning=thinning, burnin=burnin, max_iter=iterations)
-  G2 <- MCMC.NDP(G, data, iterations)
-  score <- validate.DP(G2, data)
-  save(G2, file = "G2.RData")
-  if(plotting) {
-    plotICDF.DP(G2, data, mySample)
-    plotHeatmap(G2)
-  }
-  
   G <- init.HDP(prior=Prior, L=L, J=J, thinning=thinning, burnin=burnin, max_iter=iterations)
   G3 <- MCMC.HDP(G, data, iterations)
   score <- validate.DP(G3, data)
@@ -47,5 +38,15 @@ Testing <- function(seed, data=NA, iterations=1000,burnin=500,thinning=50,L=55,K
     plotICDF.DP(G3, data, mySample)
     plotHeatmap(G3)
   }
+  
+  G <- init.NDP(prior=Prior, K=K, L=L, J=J, thinning=thinning, burnin=burnin, max_iter=iterations)
+  G2 <- MCMC.NDP(G, data, iterations)
+  score <- validate.DP(G2, data)
+  save(G2, file = "G2.RData")
+  if(plotting) {
+    plotICDF.DP(G2, data, mySample)
+    plotHeatmap(G2)
+  }
+  
 }
 

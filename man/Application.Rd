@@ -4,7 +4,7 @@
 \alias{Application}
 \title{Application}
 \usage{
-Application(seed, iterations = 55000, burnin = 5000, thinning = 50,
+Application(seed, iterations = 35000, burnin = 5000, thinning = 50,
   L = 55, K = 35)
 }
 \arguments{

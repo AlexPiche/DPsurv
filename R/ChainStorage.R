@@ -64,12 +64,12 @@ getParameters.ChainStorage <- function(DP, validation, i=0, J=0){
   
   X <- lapply(J, function(ss) t(matrix(subset(validation, Sample == ss)$data)))
   myGrid <- do.call(plyr::rbind.fill.matrix, X)
-  myGrid <- apply(myGrid, 2, rep, each=length(i)) 
+  myGrid <- apply(myGrid, 2, rep, length(i)) 
   myGrid_mat <- split(myGrid, 1:N)
   
   X <- lapply(J, function(ss) t(matrix(subset(validation, Sample == ss)$status)))
   myStatus <- do.call(plyr::rbind.fill.matrix, X)
-  myStatus <- apply(myStatus, 2, rep, each=length(i)) 
+  myStatus <- apply(myStatus, 2, rep, length(i)) 
   myStatus_mat <- split(myStatus, 1:N)
   
   return(list(theta_mat=theta_mat, phi_mat=phi_mat, 

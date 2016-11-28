@@ -30,7 +30,6 @@ validate.Score <- function(matrix_medianCurves, data, App=F){
 validate.DP <- function(DP, data, App=F){
   J <- as.numeric(unique(data@validation$Sample))
   matrix_medianCurves <- getMedianCurves(DP, data, J = J)    
-  
   log_pred <- validate.logPredictiveAccuracy(DP, data, J=J)
   
   score <- validate.Score(matrix_medianCurves, data, App)
@@ -58,9 +57,10 @@ validate.ICDF <- function(DP, validation, quantiles=0.5, i=0, J=0){
   params <- getParameters.ChainStorage(DP, validation, i, J)
   curves <- mapply(evaluate.ICDF, params$theta_mat, params$phi_mat,
                    params$weights_mat, params$myGrid_mat)
-  curves[is.na(curves)] <- -1
-  curvesReshape <- array(curves, c(dim(curves)[1], params[["N"]]/length(J), length(J)))
-  medianCurves <- apply(curvesReshape, c(1,3), quantile, quantiles, na.rm = T)
+  curves[is.na(curves)] <- -100000000
+  
+  curvesReshape <- matrix(c(curves), ncol=dim(curves)[1], byrow=T)
+  medianCurves <- apply(array(t(curvesReshape), c(dim(curves)[1], length(J), params$N/length(J))), c(1,2), quantile, quantiles, na.rm = T)
   return(medianCurves)
 }
 
@@ -71,10 +71,10 @@ validate.logPredictiveAccuracy <- function(DP, DataStorage, i=0, J=0){
   log_pred <- mapply(evaluate.logPredictiveAccurracy, params$theta_mat, params$phi_mat,
                    params$weights_mat, params$myGrid_mat, params$myStatus_mat)
   
-  log_pred_mat <- matrix(log_pred, ncol=length(J))
-  log_pred_sum <- rowSums(log_pred_mat)
-  if(length(which(is.infinite(log_pred_sum))) > 0 ) log_pred_sum <- log_pred_sum[-which(is.infinite(log_pred_sum))]
-  return(mean(log_pred_sum))
+  log_pred_mat <- matrix(c(log_pred), ncol = dim(log_pred)[1]*length(J), byrow = T)
+  if(length(is.infinite(c(log_pred_mat))) > 0) log_pred_mat[is.infinite(log_pred_mat)] <- NA
+  log_pred_mean <- apply(log_pred_mat, 2, mean, na.rm=T)
+  return(sum(log_pred_mean))
 }
 
 #'
@@ -82,17 +82,19 @@ validate.logPredictiveAccuracy <- function(DP, DataStorage, i=0, J=0){
 evaluate.logPredictiveAccurracy <- function(theta, phi, weights, x, status){
   
   # vectors of different length
-  status <- status[!is.na(status)]
-  x <- x[!is.na(x)]
+  #status <- status[!is.na(status)]
+  #x <- x[!is.na(x)]
   
   m <- length(theta)
   n <- length(x)
 
-  toRet <- rep(status, each=m)*dlnorm(rep(x, each=m), rep(theta, n), rep(phi, n), log = T) + 
-    (1-rep(status, each=m))*plnorm(rep(x, each=m), rep(theta, n), rep(phi, n), log = T)
+  log_lik <- rep(status, each=m)*dlnorm(rep(x, each=m), rep(theta, n), rep(phi, n), log = T) + 
+    (1-rep(status, each=m))*plnorm(rep(x, each=m), rep(theta, n), rep(phi, n), log = T, lower.tail = F)
   
-  xx <- matrix(rep(log(weights), n)+toRet, ncol=length(x))
-  return(sum(log(colSums(exp(xx)))))
+  log_lik_reshape <- matrix(log_lik, ncol=length(x))
+  weighted_log_lik_reshape <- log(weights) + log_lik_reshape
+  log_lik_sum <- log(colSums(exp(weighted_log_lik_reshape)))
+  return(log_lik_sum)
 }
 
 #'

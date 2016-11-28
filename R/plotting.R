@@ -68,7 +68,8 @@ grid_arrange_shared_legend <- function(plots, ...) {
 
 #'
 #' @export
-plotICDF.DP <- function(DP, DataStorage, samples=1:DP@J){
+plotICDF.DP <- function(DP, DataStorage, samples=0){
+  if(samples[1]==0) samples <- 1:DP@J
   for(sample in samples){
     plot.ICDF(DP=DP, mySample=sample, data=DataStorage) 
   }
