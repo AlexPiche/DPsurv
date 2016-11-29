@@ -74,7 +74,7 @@ validate.logPredictiveAccuracy <- function(DP, DataStorage, i=0, J=0){
   log_pred_mat <- matrix(c(log_pred), ncol = dim(log_pred)[1]*length(J), byrow = T)
   if(length(is.infinite(c(log_pred_mat))) > 0) log_pred_mat[is.infinite(log_pred_mat)] <- NA
   log_pred_mean <- apply(log_pred_mat, 2, mean, na.rm=T)
-  return(sum(log_pred_mean))
+  return(sum(log_pred_mean, na.rm = T)/length(DataStorage@presentation$data))
 }
 
 #'

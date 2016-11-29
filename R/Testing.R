@@ -1,7 +1,7 @@
 #'
 #' @export
-Testing <- function(seed, data=NA, iterations=1000,burnin=500,thinning=50,L=55,K=35, valid_prop = 0.0, mySample=0,
-                    n=20,J=10,case="1",factor=1, Prior = c(0, 0.01, 2*1/3, 2*1/3, rep(c(5, 0.1), 2)), plotting=F){
+Testing <- function(seed, data=NA, iterations=1000,burnin=500,thinning=50,L=55,K=35,valid_prop = 0.0, frailty=T, mySample=0,
+                    n=20,J=10,case="1",factor=1, Prior = c(0, 0.1, 2*1/3, 2*1/3, rep(c(5, 0.1), 2)), plotting=F){
   options(gsubfn.engine = "R")
   case <- toString(case)
   weights <- switch(case,
@@ -10,7 +10,7 @@ Testing <- function(seed, data=NA, iterations=1000,burnin=500,thinning=50,L=55,K
                     "2"=matrix(c(rep(0,6), rep(1,3)), ncol=3, byrow = T))
   set.seed(seed)
   if(is.na(data)){
-    data <- sim.data(n=n, J=J, weights=weights, factor=factor, validation_prop = valid_prop)
+    data <- sim.data(n=n, J=J, weights=weights, factor=factor, validation_prop = valid_prop, frailty)
   }
   J <- length(unique(data@presentation$Sample))
   

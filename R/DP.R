@@ -31,7 +31,7 @@ init.DP <- function(DataStorage, prior, K, J, thinning, burnin, max_iter, ...){
   DP@m <- rep(0, K)
   DP@prior <- prior
   DP@posterior <- array(rep(c(prior[1], prior[2], prior[3], prior[4]), each=(K)), c(K,1,4))
-  DP@conc_param <- rgamma(1, prior[5], prior[7])
+  DP@conc_param <- 1#rgamma(1, prior[5], prior[7])
   DP <- update.DP(DP)
   #DP@RE <- init.RE(DataStorage)
   myProb <- matrix(NA, nrow=K, ncol=J)
@@ -52,7 +52,7 @@ update.DP <- function(DP, ...){
   sums <- remainingSum(DP@m)
   beta_0 <- rbeta(sums, 1 + DP@m, DP@conc_param + sums)
   DP@weights <- as.matrix(stickBreaking(beta_0), ncol=1)
-  DP@conc_param <- rgamma(1, DP@prior[5] + DP@L - 1, DP@prior[7] - sum(log(1-DP@weights[1:(DP@L-1)])))
+  DP@conc_param <- 1#rgamma(1, DP@prior[5] + DP@L - 1, DP@prior[7] - sum(log(1-DP@weights[1:(DP@L-1)])))
   return(DP)
 }
 

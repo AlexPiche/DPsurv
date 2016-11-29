@@ -6,7 +6,7 @@ fitParfm <- function(data, App=F){
  
   params <- getSampleParameters.GFM(myModel, data@validation)
   matrix_medianCurves <- parfm_ci(params, data@validation)
-  log_pred <-validate.logPredictiveAccuracy.GFM(myModel, params) 
+  log_pred <- attributes(myModel$resmodel)$loglik/length(data@presentation$data)
   
   score <- validate.Score(matrix_medianCurves, data, App)
   score <- c(score[1], log_pred, score[2])
@@ -27,8 +27,8 @@ getSampleParameters.GFM <- function(myModel, validation, J=500){
   SEs <- data.frame(myModel)$SE
   
   coefs <- unlist(mapply(rep, as.vector(frailty_coefficients), as.vector(table(validation$Sample))))
-  fisher_IM <- solve(hessian)
-  mySample <- exp(MASS::mvrnorm(J, log(estimates), Sigma=fisher_IM))
+  cov_mat <- solve(hessian)
+  mySample <- exp(MASS::mvrnorm(J, log(estimates), Sigma=cov_mat))
   mySample_mat <- split(mySample, 1:nrow(mySample))
   
   k <- as.vector(table(validation$Sample))
@@ -73,24 +73,13 @@ weibull_gamma_fraily_ICDF <- function(rho, lambda, frailty, t){
   toRet
 }
 
-
-#   - p      : the parameters vector, in the form                              #
-#              c( frailty distribution parameter(s),                           #
-#                 baseline hazard parameter(s),                                #
-#                 regression parameter(s) )                                    #
-
-
-logLik <- function(){
-  h_t <- lambda*rho*t^(rho-1)
-  H_t <- lambda*t^(rho)
-  loglik <- sum(as.numeric(loghaz[[1]]) + logSurv)
-}
-
 #'
 #' @export
 validate.logPredictiveAccuracy.GFM <- function(myModel, params){
   Mlog_lik <- mapply(Mloglikelihood, params$mySample_mat, MoreArgs = list(obs=myModel$obsdata, dist="weibull", frailty = "gamma"))
-  log_pred <- mean(-Mlog_lik)
+  if(length(is.infinite(c(Mlog_lik)))>0) Mlog_lik[is.infinite(Mlog_lik)] <- NA
+  log_pred <- mean(-Mlog_lik, na.rm = T)
+  plot(density(-Mlog_lik))
   return(log_pred)
 }
 
@@ -101,4 +90,29 @@ weibull_gamma_fraily_PDF <- function(rho, lambda, frailty, t){
   toRet <- exp(-frailty*hazard*t)
   toRet
 }
+
+
+# functions from the parfm package
+weibull <- function(pars, t, what){
+  if (what == "H")
+    return(pars[2] * t^(pars[1]))
+  else if (what == "lh")
+    return(log(pars[1]) + log(pars[2]) + ((pars[1] - 1) * log(t)))
+}
+
+fr.gamma <- function(k,
+         s, 
+         theta, 
+         what="logLT"){
+  if (what=="logLT") {
+    res <- ifelse(k == 0, 
+                  - 1 / theta  * log(1 + theta * s),
+                  - (k + 1 / theta) * log(1 + theta * s) +
+                    sum(log(1 + (seq(from=0, to=k-1, by=1) * theta))))
+    return(res)
+  }
+  else if (what == "tau")
+    return(theta / (theta + 2))
+}
+
 

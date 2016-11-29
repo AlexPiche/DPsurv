@@ -13,8 +13,8 @@
 #' }
 #'
 #' @export
-Simulation <- function(seed,replications=1,iterations=55000,burnin=5000,thinning=50,L=35,K=20,
-                       n=10,J=10,case="1",factor=1, Prior = c(0, 0.01, 2*1/3, 2*1/3, rep(c(5, 0.1), 2)), val_prop=0, nb_cores=4){
+Simulation <- function(seed,replications=1,iterations=55000,burnin=5000,thinning=50,L=35,K=20, frailty=T,
+                       n=10,J=10,case="1",factor=1, Prior = c(0, 0.1, 2*1/3, 2*1/3, rep(c(5, 0.1), 2)), val_prop=0, nb_cores=4){
   options(gsubfn.engine = "R")
   
   case <- toString(case)
@@ -35,28 +35,31 @@ Simulation <- function(seed,replications=1,iterations=55000,burnin=5000,thinning
   set.seed(seed)
   
   scores <- parallel::mclapply(1:replications, function(i){
-    data <- sim.data(n=n, J=J, weights=weights, factor=factor, validation_prop = val_prop)
+    data <- sim.data(n=n, J=J, weights=weights, frailty=frailty, validation_prop = val_prop)
     Prior[1] <- log(median(data@presentation$data))
     
     # This line is commented out, since it depends on a modified version of parfm
     # to get confidence interval on the survival curves
-    #xx <- fitParfm(data)
+    #score_parFM <- fitParfm(data)
     score_parFM <- list(score=c(0, 0, 0), coverage=matrix(rep(0, 30), nrow = 3))
     
     print(paste("DP", i, sep=" "))
     G <- init.DP(prior=Prior, K=L, J=3*J, thinning=thinning, burnin=burnin, max_iter=iterations, DataStorage =  data)
     G <- MCMC.DP(G, data, iterations)
     score_DP <- validate.DP(G, data)
+    #score_DP <- list(coverage=matrix(rep(0,30),nrow=3), score=c(0,0,0))
     
     print(paste("NDP", i, sep=" "))
     G <- init.NDP(prior=Prior, K=K, L=L, J=3*J, thinning=thinning, burnin=burnin, max_iter=iterations)
     G <- MCMC.NDP(G, data, iterations)
     score_NDP <- validate.DP(G, data)
+    #score_NDP <- score_DP
     
     print(paste("HDP", i, sep=" "))
     G <- init.HDP(prior=Prior, L=L, J=3*J, thinning=thinning, burnin=burnin, max_iter=iterations)
     G <- MCMC.HDP(G, data, iterations)
     score_HDP <- validate.DP(G, data)
+    #score_HDP <- score_NDP
     
     toRet <- c(n, score_DP$score, score_NDP$score, score_HDP$score, score_parFM$score)
     write.table(t(toRet), file = paste0("res", filename), sep = ",", col.names = F, row.names=F, append=TRUE)
@@ -81,7 +84,7 @@ Simulation <- function(seed,replications=1,iterations=55000,burnin=5000,thinning
 #' }
 #'
 #' @export
-Application <- function(seed,iterations=35000,burnin=5000,thinning=50,L=55,K=35){
+Application <- function(seed,iterations=25000,burnin=5000,thinning=50,L=35,K=25){
   options(gsubfn.engine = "R")
   filename = paste0("applications", "seed", seed, ".csv")
   write.table(t(c("Dataset", "Log_DP", "Log_NDP", "Log_HDP")), file = filename, sep = ",", col.names = F, row.names = F)
@@ -95,28 +98,31 @@ Application <- function(seed,iterations=35000,burnin=5000,thinning=50,L=55,K=35)
   data <- init.DataStorage.simple(performArt, 0, weights=0, application=T)
   data@validation$Sample <- data@validation$zeta
   data@presentation$Sample <- data@validation$zeta
-  Prior = c(median(log(data@presentation$data)), 0.01, 2*1/3, 2*1/3, 5, 0.1, 5, 0.1)
+  Prior = c(median(log(data@presentation$data)), 0.1, 2*1/3, 2*1/3, 5, 0.1, 5, 0.1)
   parallel::mclapply(1:4, function(i){
     print(i)
     J <- length(unique(data@presentation$zeta))
     if(i == 1){
       print("DP")
       G <- init.DP(prior=Prior, K=L, J=J, thinning=thinning, burnin=burnin, max_iter=iterations, DataStorage =  data)
-      G <- MCMC.DP(G, data, iterations)
-      score_DP <- validate.DP(G, data, App=T)
+      G1 <- MCMC.DP(G, data, iterations)
+      score_DP <- validate.DP(G1, data, App=T)
+      save(G1, file="G1.RData")
       print(paste("DP", score_DP))
     }else if (i == 2){
       print("NDP")
       G <- init.NDP(prior=Prior, K=K, L=L, J=J, thinning=thinning, burnin=burnin, max_iter=iterations)
-      G <- MCMC.NDP(G, data, iterations)
-      score_NDP <- validate.DP(G, data, App=T)
+      G2 <- MCMC.NDP(G, data, iterations)
+      score_NDP <- validate.DP(G2, data, App=T)
+      save(G2, file="G2.RData")
       print(paste("NDP", score_NDP))
     } else if(i == 3) {
       print("HDP")
       G <- init.HDP(prior=Prior, L=L, 
                     J=J, thinning=thinning, burnin=burnin, max_iter=iterations)
-      G <- MCMC.HDP(G, data, iterations)
-      score_HDP <- validate.DP(G, data, App=T)
+      G3 <- MCMC.HDP(G, data, iterations)
+      score_HDP <- validate.DP(G3, data, App=T)
+      save(G3, file="G3.RData")
       print(paste("HDP", score_HDP))
       
     } else {
