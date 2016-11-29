@@ -5,9 +5,9 @@
 \title{Simulation}
 \usage{
 Simulation(seed, replications = 1, iterations = 55000, burnin = 5000,
-  thinning = 50, L = 35, K = 20, n = 10, J = 10, case = "1",
-  factor = 1, Prior = c(0, 0.01, 2 * 1/3, 2 * 1/3, rep(c(5, 0.1), 2)),
-  val_prop = 0, nb_cores = 4)
+  thinning = 50, L = 35, K = 20, frailty = T, n = 10, J = 10,
+  case = "1", factor = 1, Prior = c(0, 0.1, 2 * 1/3, 2 * 1/3, rep(c(5,
+  0.1), 2)), val_prop = 0, nb_cores = 4)
 }
 \arguments{
 \item{seed}{}

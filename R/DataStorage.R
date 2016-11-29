@@ -96,13 +96,13 @@ simSurvMix <- function(N, prob, frailty=0, params=c(3.75, 3.887, 4.5)){
     i <- runif(1)
     if(i < prob[1]){
       # -log(1/uniroot(function(x) pweibull(x,,b1)-0.85, interval=c(0,exp(150)))$root)
-      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = foltime, anc.cens = 1, beta0.cens = params[1]+log(frailty), beta0.ev = params[1]+log(frailty), dist.ev = "weibull")[,c('stop', 'status')]
+      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = foltime, anc.cens = 1, beta0.cens = params[1], beta0.ev = params[1], dist.ev = "weibull")[,c('stop', 'status')]
     }else if(i < sum(prob[1:2])){
       # log(uniroot(function(x) plnorm(x,3.887,1)-0.85, interval=c(0,exp(15)))$root)
-      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = foltime, anc.cens = 1, beta0.cens = params[2]+log(frailty), beta0.ev = params[2]+log(frailty), dist.ev = "lnorm", dist.cens = "lnorm")[,c('stop', 'status')]
+      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = foltime, anc.cens = 1, beta0.cens = params[2], beta0.ev = params[2], dist.ev = "lnorm", dist.cens = "lnorm")[,c('stop', 'status')]
     }else if(i < sum(prob[1:3])){
       #-log(1/(uniroot(function(x) pweibull(x,a3,b3)-0.85, interval=c(0,exp(150)))$root)^3) 
-      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 3, foltime = foltime, anc.cens = 3, beta0.cens = params[3]+log(frailty), beta0.ev = params[3]+log(frailty), dist.ev = "weibull")[,c('stop', 'status')]
+      toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 3, foltime = foltime, anc.cens = 3, beta0.cens = params[3], beta0.ev = params[3], dist.ev = "weibull")[,c('stop', 'status')]
     }else{
       toRet[n,] <- survsim::simple.surv.sim(1, anc.ev = 1, foltime = 10000, anc.cens = 1, beta0.cens = factor*8, beta0.ev = 8, dist.ev = "weibull")[,c('stop', 'status')]
     }
@@ -121,7 +121,7 @@ sim.data <- function(weights, n, J, validation_prop=0, frailty=F){
   idx <- apply(matrix(1:9, ncol=3), 1, rep, each=J)
   for(i in 1:(3*J)){
     fr <- ifelse(frailty, rgamma(1,1,1), 1)
-    temp <- simSurvMix(n, c(weights)[idx[i,]], frailty=1)
+    temp <- simSurvMix(n, c(weights)[idx[i,]])
     temp$data <- fr * temp$data
     mixture <- rbind(mixture, temp)
   }
